@@ -223,7 +223,7 @@ def mult_speed_up(func, array):
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Main")
-    parser.add_argument('--input_folder', action="store", dest="input_folder", help="input_folder")
+    parser.add_argument('--input_folder', action="store", dest="input_folder", help="input_folder", default=None)
     parser.add_argument('--output_folder', action="store", dest="output_folder", help="output_folder", default="")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
     parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=50)
