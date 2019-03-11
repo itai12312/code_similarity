@@ -45,11 +45,12 @@ def main(args=None):
     else:
         model = word2vec.Word2Vec.load(model_name)
     os.makedirs(params.output_folder, exist_ok=True)
+    all_vocab = list(model.wv.vocab.keys())
     with open(os.path.join(params.output_folder, 'common_words.txt'), 'w+') as f:
-        f.write(f'{model.doesnt_match("Argument case evt".split())}\n')
-        f.write(f'{model.most_similar("break")}\n')
-        f.write(f'{model.wv.similarity("break", "case")}\n')
-        f.write(f'{model.wv.most_similar(positive=["modifiers"], negative=["keycode"], topn=3)}\n')
+        f.write(f'{model.doesnt_match(all_vocab[:3])}\n')
+        f.write(f'{model.most_similar(all_vocab[0])}\n')
+        f.write(f'{model.wv.similarity(all_vocab[-2], all_vocab[-1])}\n')
+        f.write(f'{model.wv.most_similar(positive=[all_vocab[-3]], negative=[all_vocab[-4]], topn=3)}\n')
     tsnescatterplot(params.output_folder, model, [], {"Secure": list(model.wv.vocab.keys())})
     word_to_vec_plt(lists, ['Secure' for item in lists], model, params.output_folder)
 
@@ -89,7 +90,7 @@ def get_avg_features(reviews, model, num_features):
     counter = 0.
     reviewFeatureVecs = np.zeros((len(reviews),num_features), dtype="float32")
     for review in reviews:
-        if counter%1000. == 0.:
+        if counter % 1000 == 0:
             print("Review %d of %d" % (counter, len(reviews)))
         reviewFeatureVecs[counter] = make_feature_vec(review, model, num_features)
         counter = counter + 1.
@@ -98,7 +99,7 @@ def get_avg_features(reviews, model, num_features):
 
 def text_to_vec(text, model, i):
     c = 0
-    v = np.array([0.0]*300)
+    v = np.array([0.0]*model[list(model.wv.vocab.keys())[0]].size)
     for sent in text:
         for word in sent:
             if word in model:
