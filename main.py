@@ -26,10 +26,51 @@ def filter_type(x):
 def main(args=None):
     parser = get_parser()
     params = parser.parse_args(args=args)
+    if params.profiler:
+        profile(params)
+    else:
+        main_(params)
+
+
+def main_(params):
     mypath = join(params.input_folder, 'tokenized1')
     vectorizer1, lists = vectorize_folder(mypath, params.files_limit, params.max_features)
     n_lists = [l.lower().split(" ") for l in lists]
     # embeddings = [vectorizer1.transform(l) for l in n_lists]
+    embedding_model = generating_model(n_lists, params)
+    os.makedirs(params.output_folder, exist_ok=True)
+    all_vocab = list(embedding_model.wv.vocab.keys())
+    with open(os.path.join(params.output_folder, 'common_words.txt'), 'w+') as f:
+        f.write(f'{embedding_model.doesnt_match(all_vocab[:3])}\n')
+        f.write(f'{embedding_model.most_similar(all_vocab[0])}\n')
+        f.write(f'{embedding_model.wv.similarity(all_vocab[-2], all_vocab[-1])}\n')
+        f.write(f'{embedding_model.wv.most_similar(positive=[all_vocab[-3]], negative=[all_vocab[-4]], topn=3)}\n')
+    tsnescatterplot(params.output_folder, embedding_model, [], {"Secure": all_vocab})
+    # y = fit_labels(lists)
+    model = {'randomforest': RandomForestClassifier(n_estimators=100)}[params.classifier]
+    word_to_vec_plt(lists, ConstantAray(0, len(lists)), embedding_model, params.output_folder, model)
+
+
+class ConstantAray:
+    def __init__(self, val, len):
+        self.val = val
+        self.len = len
+
+    def __getitem__(self, item):
+        return self.val
+
+    def __len__(self):
+        return self.len
+
+
+def fit_labels(y):
+    le = sklearn.preprocessing.LabelEncoder()
+    le.fit(list(set(y)))
+    output = le.transform(y)
+    return output
+
+
+def generating_model(n_lists, params):
     model_name = "model1.pkl"
     if params.override or not os.path.exists(model_name):
         print("Training model...")
@@ -44,15 +85,18 @@ def main(args=None):
         model.save(model_name)
     else:
         model = word2vec.Word2Vec.load(model_name)
-    os.makedirs(params.output_folder, exist_ok=True)
-    all_vocab = list(model.wv.vocab.keys())
-    with open(os.path.join(params.output_folder, 'common_words.txt'), 'w+') as f:
-        f.write(f'{model.doesnt_match(all_vocab[:3])}\n')
-        f.write(f'{model.most_similar(all_vocab[0])}\n')
-        f.write(f'{model.wv.similarity(all_vocab[-2], all_vocab[-1])}\n')
-        f.write(f'{model.wv.most_similar(positive=[all_vocab[-3]], negative=[all_vocab[-4]], topn=3)}\n')
-    tsnescatterplot(params.output_folder, model, [], {"Secure": list(model.wv.vocab.keys())})
-    word_to_vec_plt(lists, ['Secure' for item in lists], model, params.output_folder)
+    return model
+
+
+def profile(params):
+    import fileinput
+    import cProfile
+    pr = cProfile.Profile()
+    pr.enable()
+    main_(params)
+    pr.disable()
+    # cumtime, ncalls
+    pr.print_stats(sort='cumtime')
 
 
 def main2(params):
@@ -109,13 +153,9 @@ def text_to_vec(text, model, i):
     return v/c if c > 0 else v
 
 
-def word_to_vec_plt(reduced_results, y, model, output_folder):
-    features = np.array([text_to_vec(reduced_results[i], model, i) for i in range(len(reduced_results))])
-    # y = all_lyrics[:lim]["genre"]
-    le = sklearn.preprocessing.LabelEncoder()
-    le.fit(list(set(y)))
-    y = le.transform(y)
-    plott(features, y, RandomForestClassifier(n_estimators=100), 'word_to_vec_approach.png', output_folder)
+def word_to_vec_plt(reduced_results, y, embedding_model, output_folder, model):
+    features = np.array([text_to_vec(reduced_results[i], embedding_model, i) for i in range(len(reduced_results))])
+    plott(features, y, model, 'word_to_vec_approach.png', output_folder)
 
 
 def plott(x, y, model, figname, output_folder):
@@ -224,11 +264,13 @@ def mult_speed_up(func, array):
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Main")
-    parser.add_argument('--input_folder', action="store", dest="input_folder", help="input_folder", default=None)
-    parser.add_argument('--output_folder', action="store", dest="output_folder", help="output_folder", default="")
+    parser.add_argument('--input_folder', action="store", dest="input_folder", help="input_folder", default="../codes/")
+    parser.add_argument('--output_folder', action="store", dest="output_folder", help="output_folder", default="results")
+    parser.add_argument('--classifier', action="store", dest="classifier", help="randomforest for now", default="randomforest")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
     parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=50)
-    parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower in ['false'])
+    parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
+    parser.add_argument('--profiler', action="store", dest="profiler", default=False, type=lambda x:x.lower not in ['false', '0', 'n'])
 
     parser.add_argument('--num_features', action="store", dest="num_features", type=int, default=300)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
