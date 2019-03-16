@@ -4,6 +4,7 @@ import traceback
 
 import pandas as pd
 from gensim.models import word2vec
+import scipy
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 import os
@@ -17,11 +18,8 @@ from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
-
-
-def filter_type(x):
-    return isinstance(x, (int, float))
-
+# import nltk
+from utils import tsnescatterplot, create_functions_list_from_df
 
 def main(args=None):
     parser = get_parser()
@@ -34,21 +32,15 @@ def main(args=None):
 
 def main_(params):
     mypath = join(params.input_folder, 'tokenized1')
-    vectorizer1, lists = vectorize_folder(mypath, params.files_limit, params.max_features)
-    n_lists = [l.lower().split(" ") for l in lists]
-    # embeddings = [vectorizer1.transform(l) for l in n_lists]
-    embedding_model = generating_model(n_lists, params)
-    os.makedirs(params.output_folder, exist_ok=True)
-    all_vocab = list(embedding_model.wv.vocab.keys())
-    with open(os.path.join(params.output_folder, 'common_words.txt'), 'w+') as f:
-        f.write(f'{embedding_model.doesnt_match(all_vocab[:3])}\n')
-        f.write(f'{embedding_model.most_similar(all_vocab[0])}\n')
-        f.write(f'{embedding_model.wv.similarity(all_vocab[-2], all_vocab[-1])}\n')
-        f.write(f'{embedding_model.wv.most_similar(positive=[all_vocab[-3]], negative=[all_vocab[-4]], topn=3)}\n')
-    tsnescatterplot(params.output_folder, embedding_model, [], {"Secure": all_vocab})
-    # y = fit_labels(lists)
-    model = {'randomforest': RandomForestClassifier(n_estimators=100)}[params.classifier]
-    word_to_vec_plt(lists, ConstantAray(0, len(lists)), embedding_model, params.output_folder, model)
+    vectorizer1, lists, bow_matrix = vectorize_folder(mypath, params.files_limit, params.max_features)
+    metric = {'jaccard': scipy.spatial.distance.jaccard, 'cosine': scipy.spatial.distance.cosine}[params.metric]
+    analyze_functions(bow_matrix, metric, lists)
+
+def analyze_functions(matrix, metric, lists):
+    vfunc = np.vectorize(lambda a:metric(a, matrix[0]), otypes=[float])
+    out = vfunc(matrix[1:])
+    idx = np.argmax(out)
+    print(lists[idx], lists[0])
 
 
 class ConstantAray:
@@ -99,25 +91,6 @@ def profile(params):
     pr.print_stats(sort='cumtime')
 
 
-def main2(params):
-    df = pd.read_csv(join(params.input_folder,
-                          'tokenized1/084_update_quality_minmax_sizeFixture.cs.tree-viewer.txt'), header=None)
-    df = df[df[0].notnull()]
-    df.applymap(filter_type)
-    matrix = CountVectorizer(max_features=10)
-    X = matrix.fit_transform(df[0]).toarray()
-    print(matrix.vocabulary_)
-    print(matrix.get_params())
-    df[0].iloc[0:10].str.cat(sep=' ')
-    starters = df.loc[df[0] == "BEGIN_METHOD"]
-    enders = df.loc[df[0] == "END_METHOD"]
-    zipped = list(zip(starters.index, enders.index))
-    functions_list = []
-    for begin, end in zipped:
-        functions_list.append(df[0].iloc[begin:end+1].str.cat(sep=' '))
-    create_functions_list_from_df(df)
-
-
 def make_feature_vec(words, model, num_features):
     feature_vec = np.zeros((num_features,),dtype="float32")
     nwords = 0.
@@ -141,113 +114,6 @@ def get_avg_features(reviews, model, num_features):
     return reviewFeatureVecs
 
 
-def text_to_vec(text, model, i):
-    c = 0
-    v = np.array([0.0]*model[list(model.wv.vocab.keys())[0]].size)
-    for sent in text:
-        for word in sent:
-            if word in model:
-                if word in model:
-                    v += model[word]
-                    c += 1
-    return v/c if c > 0 else v
-
-
-def word_to_vec_plt(reduced_results, y, embedding_model, output_folder, model):
-    features = np.array([text_to_vec(reduced_results[i], embedding_model, i) for i in range(len(reduced_results))])
-    plott(features, y, model, 'word_to_vec_approach.png', output_folder)
-
-
-def plott(x, y, model, figname, output_folder):
-    xtrain, xtest, ytrain, ytest = train_test_split(x, y, test_size=0.14)
-    plotting(xtrain, ytrain, xtest, ytest, model, figname, output_folder)
-
-
-def plotting(X_train, y_train, X_test, y_test, model, figname, output_folder):
-    plt.close()
-    model.fit(X_train, y_train)
-    ypred = model.predict(X_test)
-    # ypredtrain = model.predict(X_train)
-    # print('acc for train is {}'.format(sum(ypredtrain==y_train)/len(y_train)))
-    confusion = sklearn.metrics.confusion_matrix(y_test, ypred)
-    plt.imshow(confusion, interpolation='nearest')
-    plt.xlabel('pred')
-    plt.ylabel('gt')
-    plt.colorbar()
-
-    aaa = list(range(confusion.shape[0]))
-    for (j, i) in itertools.product(aaa, aaa):
-        plt.text(i, j, confusion[j, i], ha='center', va='center', color='blue')
-    classes = sorted(set(y_test))
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=90)
-    plt.yticks(tick_marks, classes)
-    plt.tight_layout()
-    plt.savefig(join(output_folder, figname))
-    # plt.show()
-    with open(join(output_folder, 'f1_score_{}.txt'.format(figname)), 'w+') as f:
-        f.write('acc for test is {}\n'.format(np.trace(confusion)/np.sum(confusion, axis=(1,0))))
-        f.write('class id, precision, recall, f1 for {}\n'.format(figname))
-        for class_id in range(len(confusion)):
-            try:
-                precision = confusion[class_id, class_id]/sum(confusion[:, class_id]) if sum(confusion[:, class_id]) >0 else 0
-                recall = confusion[class_id, class_id]/sum(confusion[class_id, :]) if sum(confusion[class_id, :]) >0 else 0
-                f.write('{}, {}, {}, {}\n'.format(class_id, precision, recall, 2*precision*recall/(precision+recall) if precision+recall >0 else 0))
-            except Exception as e:
-                print(e)
-                print(traceback.print_exc())
-    plt.close()
-    return np.where(y_test != ypred)
-
-
-def tsnescatterplot(output_folder, model, all_words, words_freq_genre):
-    # red green blue gray coral brown yellow azure plum pink lime olive
-    colors = {'Secure': 'green'}
-    words_list = [(word, genre, colors[genre]) for genre in words_freq_genre for word in words_freq_genre[genre]]
-    others = list(set(all_words)-set([item[0] for item in words_list]))
-    others = [(word, 'non', 'grey') for word in others]
-    all_words = np.array([w for w in others + words_list if w[0] in model.wv])
-    arrays = np.array([model.wv[word] for word in all_words[:, 0]])
-    # Reduces the dimensionality from 300 to 50 dimensions with PCA
-    reduc = PCA(n_components=50).fit_transform(arrays)
-    # Finds t-SNE coordinates for 2 dimensions
-    np.set_printoptions(suppress=True)
-    Y = TSNE(n_components=2, random_state=0, perplexity=15).fit_transform(reduc)
-    # Sets everything up to plot
-    df = pd.DataFrame({'x': [x for x in Y[:, 0]],
-                       'y': [y for y in Y[:, 1]],
-                       'words': all_words[:, 1],
-                       'color': all_words[:, 2]})
-    fig, _ = plt.subplots()
-    fig.set_size_inches(9, 9)
-    # Basic plot
-    p1 = sns.regplot(data=df,
-                     x="x",
-                     y="y",
-                     fit_reg=False,
-                     marker=".",
-                     scatter_kws={'s': 40,
-                                  'facecolors': df['color']
-                                  }
-                     )
-    # Adds annotations one by one with a loop
-    # for line in range(0, df.shape[0]):
-    #     p1.text(df["x"][line],
-    #             df['y'][line],
-    #             '  ' + df["words"][line].title(),
-    #             horizontalalignment='left',
-    #             verticalalignment='bottom', size='medium',
-    #             color=df['color'][line],
-    #             weight='normal'
-    #             ).set_size(15)
-    plt.xlim(Y[:, 0].min() - 50, Y[:, 0].max() + 50)
-    plt.ylim(Y[:, 1].min() - 50, Y[:, 1].max() + 50)
-
-    plt.title('t-SNE visualization for genres')
-    plt.savefig(os.path.join(output_folder, 'tsne.png'))
-    # plt.show()
-
-
 def mult_speed_up(func, array):
     with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
         # with tqdm(total=len(array)) as pbar:
@@ -267,10 +133,11 @@ def get_parser():
     parser.add_argument('--input_folder', action="store", dest="input_folder", help="input_folder", default="../codes/")
     parser.add_argument('--output_folder', action="store", dest="output_folder", help="output_folder", default="results")
     parser.add_argument('--classifier', action="store", dest="classifier", help="randomforest for now", default="randomforest")
+    parser.add_argument('--metric', action="store", dest="metric", help="jaccard or cosine", default="jaccard")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
-    parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=50)
+    parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
-    parser.add_argument('--profiler', action="store", dest="profiler", default=False, type=lambda x:x.lower not in ['false', '0', 'n'])
+    parser.add_argument('--profiler', action="store", dest="profiler", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
 
     parser.add_argument('--num_features', action="store", dest="num_features", type=int, default=300)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
@@ -280,15 +147,6 @@ def get_parser():
     return parser
 
 
-def create_functions_list_from_df(df):
-    df = df[df[0].notnull()]
-    starters = df.loc[df[0] == "BEGIN_METHOD"]
-    enders = df.loc[df[0] == "END_METHOD"]
-    zipped = list(zip(starters.index, enders.index))
-    functions_list = []
-    for begin, end in zipped:
-        functions_list.append(df[0].iloc[begin:end+1].str.cat(sep=' '))
-    return functions_list
 
 
 def create_functions_list_from_filenames_list(files_list):
@@ -297,7 +155,10 @@ def create_functions_list_from_filenames_list(files_list):
         try:
             df = pd.read_csv(filename, header = None)
             functions_list += create_functions_list_from_df(df)
-        except:
+        except Exception as e:
+            print(filename)
+            print(e)
+            print(traceback.print_exc())
             continue
     return functions_list
 
@@ -306,8 +167,8 @@ def vectorize_text(text, max_features):
     # create the transform
     vectorizer = CountVectorizer(max_features = max_features)
     # build vocab
-    vectorizer.fit(text)
-    return vectorizer
+    bow_matrix = vectorizer.fit_transform(text)
+    return vectorizer, bow_matrix
 
 
 def get_filenames(mypath):
@@ -318,9 +179,25 @@ def get_filenames(mypath):
 def vectorize_folder(path, limit, max_features):
     files_list = get_filenames(path)
     functions_list = create_functions_list_from_filenames_list(files_list[:limit])
-    vectorizer = vectorize_text(functions_list, max_features)
-    return vectorizer, functions_list
+    vectorizer, bow_matrix = vectorize_text(functions_list, max_features)
+    return vectorizer, functions_list, bow_matrix
 
+
+def main1(lists, params):
+    n_lists = [l.lower().split(" ") for l in lists]
+    # embeddings = [vectorizer1.transform(l) for l in n_lists]
+    embedding_model = generating_model(n_lists, params)
+    os.makedirs(params.output_folder, exist_ok=True)
+    all_vocab = list(embedding_model.wv.vocab.keys())
+    with open(os.path.join(params.output_folder, 'common_words.txt'), 'w+') as f:
+        f.write(f'{embedding_model.doesnt_match(all_vocab[:3])}\n')
+        f.write(f'{embedding_model.most_similar(all_vocab[0])}\n')
+        f.write(f'{embedding_model.wv.similarity(all_vocab[-2], all_vocab[-1])}\n')
+        f.write(f'{embedding_model.wv.most_similar(positive=[all_vocab[-3]], negative=[all_vocab[-4]], topn=3)}\n')
+    # tsnescatterplot(params.output_folder, embedding_model, [], {"Secure": all_vocab})
+    # y = fit_labels(lists)
+    model = {'randomforest': RandomForestClassifier(n_estimators=100)}[params.classifier]
+    # word_to_vec_plt(lists, ConstantAray(0, len(lists)), embedding_model, params.output_folder, model)
 
 if __name__ == "__main__":
     main()
