@@ -1,5 +1,4 @@
 import argparse
-import itertools
 import traceback
 
 import pandas as pd
@@ -13,12 +12,6 @@ from os.path import isfile, join
 import pathos.multiprocessing as multiprocessing
 import numpy as np
 import sklearn
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.model_selection import train_test_split
-# import nltk
 from utils import tsnescatterplot, create_functions_list_from_df
 
 def main(args=None):

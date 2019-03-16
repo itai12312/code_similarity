@@ -3,6 +3,16 @@ from os.path import isfile, join
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
 import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+# import nltk
+import itertools
+import sklearn
+import traceback
+import os
 
 def filter_type(x):
     return isinstance(x, (int, float))
