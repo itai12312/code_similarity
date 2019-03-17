@@ -24,16 +24,33 @@ def main(args=None):
 
 
 def main_(params):
+    if not os.path.exists(params.output_folder):
+        os.mkdir(params.output_folder)
     mypath = join(params.input_folder, 'tokenized1')
     vectorizer1, lists, bow_matrix = vectorize_folder(mypath, params.files_limit, params.max_features)
     metric = {'jaccard': scipy.spatial.distance.jaccard, 'cosine': scipy.spatial.distance.cosine}[params.metric]
-    analyze_functions(bow_matrix, metric, lists)
+    analyze_functions(bow_matrix, metric, lists, params.output_folder)
 
-def analyze_functions(matrix, metric, lists):
-    vfunc = np.vectorize(lambda a:metric(a, matrix[0]), otypes=[float])
-    out = vfunc(matrix[1:])
-    idx = np.argmax(out)
-    print(lists[idx], lists[0])
+
+def analyze_functions(matrix, metric, lists, output_folder):
+    # vfunc = np.vectorize(lambda a:metric(a.toarray(), matrix[0].toarray()), otypes=float)
+    # out = vfunc(matrix[1:])
+    with open(join(output_folder, 'close_functions.txt'), 'w+') as f:
+        for j in range(10):
+            idx = get_closest_idx(matrix, metric, j)
+            f.write(f'results: input {j}\n')
+            f.write(lists[j].replace("\n", "")+"\n")
+            f.write(f'closest match: {idx}\n')
+            f.write(lists[idx].replace("\n", "")+"\n")
+            pass
+
+
+def get_closest_idx(matrix, metric, j):
+    res = [metric(matrix[i].toarray(), matrix[j].toarray()) for i in range(matrix.shape[0])]
+    res = np.array(res)
+    results = np.argsort(-res, axis=0)
+    idx = list(set(results[:3])-set([j]))[0]
+    return idx
 
 
 class ConstantAray:
@@ -130,7 +147,7 @@ def get_parser():
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
     parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
-    parser.add_argument('--profiler', action="store", dest="profiler", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
+    parser.add_argument('--profiler', action="store", dest="profiler", default=False, type=lambda x:x.lower in ['true', '1', 'y'])
 
     parser.add_argument('--num_features', action="store", dest="num_features", type=int, default=300)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
