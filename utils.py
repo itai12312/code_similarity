@@ -23,9 +23,8 @@ def create_functions_list_from_df(df):
     starters = df.loc[df[0] == "BEGIN_METHOD"]
     enders = df.loc[df[0] == "END_METHOD"]
     zipped = list(zip(starters.index, enders.index))
-    functions_list = []
-    for begin, end in zipped:
-        functions_list.append(df[0].iloc[begin:end+1].str.cat(sep=' '))
+    functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped]
+    functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
     return functions_list
 
 

@@ -157,14 +157,13 @@ def get_parser():
     return parser
 
 
-
-
 def create_functions_list_from_filenames_list(files_list):
     functions_list = []
     for filename in files_list:
         try:
             df = pd.read_csv(filename, header = None)
-            functions_list += create_functions_list_from_df(df)
+            temp = create_functions_list_from_df(df)
+            functions_list +=temp
         except Exception as e:
             print(filename)
             print(e)
