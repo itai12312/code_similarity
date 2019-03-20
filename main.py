@@ -26,7 +26,14 @@ def main(args=None):
 def main_(params):
     mypath = join(params.input_folder, 'tokenized1')
     vectorizer1, lists, bow_matrix = vectorize_folder(mypath, params.files_limit, params.max_features)
-    metric = {'jaccard': scipy.spatial.distance.jaccard, 'cosine': scipy.spatial.distance.cosine}[params.metric]
+    if params.matix_form == '0-1':
+        bow_matrix[bow_matrix > 1] = 1
+    elif params.matix_form == 'tf-idf':
+        bow_matrix = bow_matrix*1./bow_matrix.sum(axis=1)[:,None]
+    metric = {'jaccard': scipy.spatial.distance.jaccard,
+              'cosine': scipy.spatial.distance.cosine,
+              'euclidean': scipy.spatial.distance.euclidean,
+              'cityblock': scipy.spatial.distance.cityblock}[params.metric]
     analyze_functions(bow_matrix, metric, lists)
 
 def analyze_functions(matrix, metric, lists):
@@ -127,6 +134,7 @@ def get_parser():
     parser.add_argument('--output_folder', action="store", dest="output_folder", help="output_folder", default="results")
     parser.add_argument('--classifier', action="store", dest="classifier", help="randomforest for now", default="randomforest")
     parser.add_argument('--metric', action="store", dest="metric", help="jaccard or cosine", default="jaccard")
+    parser.add_argument('--matix_form', action="store", dest="matix_form", help="0-1 or tf-idf or none", default="none")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
     parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
