@@ -24,8 +24,10 @@ def main(args=None):
 
 
 def main_(params):
+    if not os.path.exists(params.output_folder):
+        os.mkdir(params.output_folder)
     mypath = join(params.input_folder, 'tokenized1')
-    vectorizer1, lists, bow_matrix = vectorize_folder(mypath, params.files_limit, params.max_features)
+    vectorizer1, lists, bow_matrix, raw_lists = vectorize_folder(mypath, params.files_limit, params.max_features)
     if params.matix_form == '0-1':
         bow_matrix[bow_matrix > 1] = 1
     elif params.matix_form == 'tf-idf':
@@ -34,13 +36,30 @@ def main_(params):
               'cosine': scipy.spatial.distance.cosine,
               'euclidean': scipy.spatial.distance.euclidean,
               'cityblock': scipy.spatial.distance.cityblock}[params.metric]
-    analyze_functions(bow_matrix, metric, lists)
+    analyze_functions(bow_matrix, metric, lists, raw_lists, params.output_folder)
 
-def analyze_functions(matrix, metric, lists):
-    vfunc = np.vectorize(lambda a:metric(a, matrix[0]), otypes=[float])
-    out = vfunc(matrix[1:])
-    idx = np.argmax(out)
-    print(lists[idx], lists[0])
+
+def analyze_functions(matrix, metric, lists, raw_lists, output_folder):
+    # vfunc = np.vectorize(lambda a:metric(a.toarray(), matrix[0].toarray()), otypes=float)
+    # out = vfunc(matrix[1:])
+    with open(join(output_folder, 'close_functions.txt'), 'w+') as f:
+        for j in range(10):
+            idx = get_closest_idx(matrix, metric, j)
+            f.write(f'results: input {j}\n')
+            f.write(lists[j].replace("\n", "")+"\n")
+            f.write(raw_lists[j].replace("\n", "")+"\n")
+            f.write(f'closest match: {idx}\n')
+            f.write(lists[idx].replace("\n", "")+"\n")
+            f.write(raw_lists[idx].replace("\n", "")+"\n")
+            pass
+
+
+def get_closest_idx(matrix, metric, j):
+    res = [metric(matrix[i].toarray(), matrix[j].toarray()) for i in range(matrix.shape[0])]
+    res = np.array(res)
+    results = np.argsort(-res, axis=0)
+    idx = list(set(results[:3])-set([j]))[0]
+    return idx
 
 
 class ConstantAray:
@@ -138,7 +157,7 @@ def get_parser():
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
     parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
-    parser.add_argument('--profiler', action="store", dest="profiler", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
+    parser.add_argument('--profiler', action="store", dest="profiler", default=False, type=lambda x:x.lower in ['true', '1', 'y'])
 
     parser.add_argument('--num_features', action="store", dest="num_features", type=int, default=300)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
@@ -148,20 +167,21 @@ def get_parser():
     return parser
 
 
-
-
 def create_functions_list_from_filenames_list(files_list):
     functions_list = []
+    raw_list = []
     for filename in files_list:
         try:
-            df = pd.read_csv(filename, header = None)
-            functions_list += create_functions_list_from_df(df)
+
+            temp, temp_raw = create_functions_list_from_df(filename)
+            functions_list +=temp
+            raw_list+= temp_raw
         except Exception as e:
             print(filename)
             print(e)
-            print(traceback.print_exc())
+            # print(traceback.print_exc())
             continue
-    return functions_list
+    return functions_list, raw_list
 
 
 def vectorize_text(text, max_features):
@@ -179,9 +199,9 @@ def get_filenames(mypath):
 
 def vectorize_folder(path, limit, max_features):
     files_list = get_filenames(path)
-    functions_list = create_functions_list_from_filenames_list(files_list[:limit])
+    functions_list, raw_list = create_functions_list_from_filenames_list(files_list[:limit])
     vectorizer, bow_matrix = vectorize_text(functions_list, max_features)
-    return vectorizer, functions_list, bow_matrix
+    return vectorizer, functions_list, bow_matrix, raw_list
 
 
 def main1(lists, params):
