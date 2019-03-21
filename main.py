@@ -1,6 +1,6 @@
 import argparse
 import traceback
-
+import itertools
 import pandas as pd
 from gensim.models import word2vec
 import scipy
@@ -27,7 +27,7 @@ def main_(params):
     if not os.path.exists(params.output_folder):
         os.mkdir(params.output_folder)
     mypath = join(params.input_folder, 'tokenized1')
-    vectorizer1, lists, bow_matrix, raw_lists = vectorize_folder(mypath, params.files_limit, params.max_features)
+    vectorizer1, lists, bow_matrix, raw_lists = vectorize_folder(mypath, params.files_limit, params.max_features, params.output_folder)
     if params.matix_form == '0-1':
         bow_matrix[bow_matrix > 1] = 1
     elif params.matix_form == 'tf-idf':
@@ -36,30 +36,42 @@ def main_(params):
               'cosine': scipy.spatial.distance.cosine,
               'euclidean': scipy.spatial.distance.euclidean,
               'cityblock': scipy.spatial.distance.cityblock}[params.metric]
-    analyze_functions(bow_matrix, metric, lists, raw_lists, params.output_folder)
+    analyze_functions(bow_matrix, metric, lists, raw_lists, params.output_folder, list(vectorizer1.vocabulary_.keys()))
 
 
-def analyze_functions(matrix, metric, lists, raw_lists, output_folder):
+def analyze_functions(matrix, metric, lists, raw_lists, output_folder, vocab):
     # vfunc = np.vectorize(lambda a:metric(a.toarray(), matrix[0].toarray()), otypes=float)
     # out = vfunc(matrix[1:])
+    if not os.path.exists(join(output_folder, 'samples')):
+        os.mkdir(join(output_folder, 'samples'))
     with open(join(output_folder, 'close_functions.txt'), 'w+') as f:
         for j in range(10):
-            idx = get_closest_idx(matrix, metric, j)
-            f.write(f'results: input {j}\n')
+            idx, score = get_closest_idx(matrix, metric, j)
+            assert j != idx
+            confusion = {}
+            for var1, var2 in itertools.product(range(2), range(2)):
+                indices = np.where((matrix[j].toarray()==var1) & (matrix[idx].toarray()==var2))
+                confusion[(var1, var2)]  = len(indices[1])
+            f.write(f'results: input {j} with score {score}\n')
+            f.write(f'{confusion}\n')
             f.write(lists[j].replace("\n", "")+"\n")
-            f.write(raw_lists[j].replace("\n", "")+"\n")
             f.write(f'closest match: {idx}\n')
             f.write(lists[idx].replace("\n", "")+"\n")
-            f.write(raw_lists[idx].replace("\n", "")+"\n")
+            with open(join(output_folder, 'samples', 'close_functions_{}_input.txt'.format(j)), 'w+') as f1:
+                f1.write(raw_lists[j])
+                # f1.write(raw_lists[j].replace("\n", "")+"\n")
+            with open(join(output_folder, 'samples', 'close_functions_{}_closest.txt'.format(j)), 'w+') as f2:
+                f2.write(raw_lists[idx])
+                #f2.write(raw_lists[idx].replace("\n", "")+"\n")
             pass
 
 
 def get_closest_idx(matrix, metric, j):
     res = [metric(matrix[i].toarray(), matrix[j].toarray()) for i in range(matrix.shape[0])]
     res = np.array(res)
-    results = np.argsort(-res, axis=0)
-    idx = list(set(results[:3])-set([j]))[0]
-    return idx
+    results = np.argsort(res, axis=0)
+    idx = list(set(results[:2])-set([j]))[0]
+    return idx, res[idx]
 
 
 class ConstantAray:
@@ -157,9 +169,10 @@ def get_parser():
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
     parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
-    parser.add_argument('--profiler', action="store", dest="profiler", default=False, type=lambda x:x.lower in ['true', '1', 'y'])
+    parser.add_argument('--profiler', action="store_true", dest="profiler", default=False)  # type=lambda x:x.lower in ['true', '1', 'y']
 
     parser.add_argument('--num_features', action="store", dest="num_features", type=int, default=300)
+    parser.add_argument('--top_similar_functions', action="store", dest="top_similar_functions", type=int, default=10)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
     parser.add_argument('--num_workers', action="store", dest="num_workers", type=int, default=4)
     parser.add_argument('--context', action="store", dest="context", type=int, default=10)
@@ -167,20 +180,22 @@ def get_parser():
     return parser
 
 
-def create_functions_list_from_filenames_list(files_list):
+def create_functions_list_from_filenames_list(files_list, output_folder):
     functions_list = []
     raw_list = []
-    for filename in files_list:
-        try:
-
-            temp, temp_raw = create_functions_list_from_df(filename)
-            functions_list +=temp
-            raw_list+= temp_raw
-        except Exception as e:
-            print(filename)
-            print(e)
-            # print(traceback.print_exc())
-            continue
+    with open(join(output_folder, 'error_parsing.txt'), 'w+') as f:
+        for filename in files_list:
+            try:
+                temp, temp_raw, code = create_functions_list_from_df(filename)
+                functions_list +=temp
+                raw_list+= temp_raw
+            except Exception as e:
+                print(filename)
+                print(e)
+                code = f'{e}'
+                # print(traceback.print_exc())
+            if code != "":
+                f.write(f'{filename}: {code}\n')
     return functions_list, raw_list
 
 
@@ -197,9 +212,9 @@ def get_filenames(mypath):
     return filenames
 
 
-def vectorize_folder(path, limit, max_features):
+def vectorize_folder(path, limit, max_features, output_folder):
     files_list = get_filenames(path)
-    functions_list, raw_list = create_functions_list_from_filenames_list(files_list[:limit])
+    functions_list, raw_list = create_functions_list_from_filenames_list(files_list[:limit], output_folder)
     vectorizer, bow_matrix = vectorize_text(functions_list, max_features)
     return vectorizer, functions_list, bow_matrix, raw_list
 

@@ -13,6 +13,7 @@ import itertools
 import sklearn
 import traceback
 import os
+import math
 
 def filter_type(x):
     return isinstance(x, (int, float))
@@ -21,24 +22,37 @@ def str_ok(stri):
     return len(stri.replace("\n", "")) > 2
 
 def create_functions_list_from_df(filename):
-    df = pd.read_csv(filename, header = None)
+    df = pd.read_csv(filename, header = None, engine='python')
     df = df[df[0].notnull()]
     starters = df.loc[df[0] == "BEGIN_METHOD"]
     enders = df.loc[df[0] == "END_METHOD"]
     if len(starters) != len(enders):
         print(f'{filename} has different number of start and end in parsed!!!')
-    # if len(starters) == 0 or len(enders) == 0:
-    #     print(f'no functions found! {filename}')
-    #     return [], []
+    if len(starters) == 0 or len(enders) == 0:
+        return [], [],  f'no functions found!'
     zipped = list(zip(starters.index, enders.index))
-    functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped if str_ok(df[0].iloc[begin:end+1].str.cat(sep=' '))]
+    functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped]
     # # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
-    # with open(filename.replace("/tokenized1/", "/c_sharp_code/").replace(".tree-viewer.txt", "")) as f:
-    #     data = f.read().split("\n")
-    # raw_ranges = list(zip(starters.values[:,2], enders.values[:,2]))
-    # functions_raw = [data[begin:end].str.cat(sep=' ') if ((not math.isnan(begin) and not math.isnan(end)) and False) else '' for begin, end in raw_ranges if str_ok(df[0].iloc[begin:end+1].str.cat(sep=' '))]
-    functions_raw = ['' for i in range(len(functions_list))]
-    return functions_list, functions_raw
+    with open(filename.replace("{0}tokenized1{0}".format(os.sep),
+                               "{0}c_sharp_code{0}".format(os.sep)).replace(".tree-viewer.txt", "")) as f:
+        data = f.read().splitlines()
+    raw_start = df.loc[starters.index+1]
+    # raw_end = df.loc[enders.index-1]
+    curs = []
+    for idx in range(len(enders.index)):
+        cur = enders.index[idx]
+        realidx = list(df.index).index(cur)
+        while math.isnan(df.values[realidx, 2]):
+            realidx -= 1
+        curs.append(df.index[realidx])
+    raw_end = df.loc[curs]
+
+    # raw_ranges = list(zip(raw_start.index, raw_end.index))
+    raw_ranges = list(zip(raw_start.values[:,2], raw_end.values[:,2]))
+    functions_raw = ['\n'.join(data[int(begin):int(end)])
+                     for (begin, end) in raw_ranges]
+    # functions_raw = ['' for i in range(len(functions_list))]
+    return functions_list, functions_raw, ""
 
 
 def main2(params):
