@@ -27,16 +27,17 @@ def create_functions_list_from_df(filename):
     enders = df.loc[df[0] == "END_METHOD"]
     if len(starters) != len(enders):
         print(f'{filename} has different number of start and end in parsed!!!')
-    if len(starters) == 0 or len(enders) == 0:
-        print(f'no functions found! {filename}')
-        return [], []
+    # if len(starters) == 0 or len(enders) == 0:
+    #     print(f'no functions found! {filename}')
+    #     return [], []
     zipped = list(zip(starters.index, enders.index))
     functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped if str_ok(df[0].iloc[begin:end+1].str.cat(sep=' '))]
-    # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
-    with open(filename.replace("/tokenized1/", "/c_sharp_code/").replace(".tree-viewer.txt", "")) as f:
-        data = f.read().split("\n")
-    raw_ranges = list(zip(starters.values[:,2], enders.values[:,2]))
-    functions_raw = [data[begin:end].str.cat(sep=' ') if ((not math.isnan(begin) and not math.isnan(end)) and False) else '' for begin, end in raw_ranges if str_ok(df[0].iloc[begin:end+1].str.cat(sep=' '))]
+    # # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
+    # with open(filename.replace("/tokenized1/", "/c_sharp_code/").replace(".tree-viewer.txt", "")) as f:
+    #     data = f.read().split("\n")
+    # raw_ranges = list(zip(starters.values[:,2], enders.values[:,2]))
+    # functions_raw = [data[begin:end].str.cat(sep=' ') if ((not math.isnan(begin) and not math.isnan(end)) and False) else '' for begin, end in raw_ranges if str_ok(df[0].iloc[begin:end+1].str.cat(sep=' '))]
+    functions_raw = ['' for i in range(len(functions_list))]
     return functions_list, functions_raw
 
 

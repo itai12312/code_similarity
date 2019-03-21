@@ -222,3 +222,10 @@ def main1(lists, params):
 
 if __name__ == "__main__":
     main()
+
+
+# import numba as nb
+# @nb.vectorize(target="cpu")
+# def nb_vf(x):
+#     return x+2*x*x+4*x*x*x
+
