@@ -156,6 +156,10 @@ def get_parser():
     parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
     return parser
 
+import numba as nb
+@nb.vectorize(target="cpu")
+def nb_vf(x):
+    return x+2*x*x+4*x*x*x
 
 def create_functions_list_from_filenames_list(files_list):
     functions_list = []
