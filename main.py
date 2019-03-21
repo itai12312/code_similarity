@@ -187,18 +187,28 @@ def create_functions_list_from_filenames_list(files_list, output_folder):
     functions_list = []
     raw_list = []
     with open(join(output_folder, 'error_parsing.txt'), 'w+') as f:
-        for filename in tqdm(files_list, total=len(files_list), unit="files"):
-            try:
-                temp, temp_raw, code = create_functions_list_from_df(filename)
-                functions_list +=temp
-                raw_list+= temp_raw
-            except Exception as e:
-                # print(filename)
-                # print(e)
-                code = f'{e}'
-                # print(traceback.print_exc())
-            if code != "":
-                f.write(f'{filename}: {code}\n')
+        # sizecounter = 0
+        # for filepath in tqdm(files_list, unit="files"):
+        #     sizecounter.append(os.stat(filepath).st_size)
+        # multiprocess speed up!!!
+        sizecounter = len(files_list)
+        with tqdm(total=sizecounter,
+                  unit='B', unit_scale=True, unit_divisor=1024) as pbar:
+            # , total=len(files_list), unit="files")
+            for file_idx, filename in enumerate(files_list):
+                try:
+                    temp, temp_raw, code = create_functions_list_from_df(filename)
+                    functions_list +=temp
+                    raw_list+= temp_raw
+                except Exception as e:
+                    # print(filename)
+                    # print(e)
+                    code = f'{e}'
+                    # print(traceback.print_exc())
+                if code != "":
+                    f.write(f'{filename}: {code}\n')
+                # pbar.update(sizecounter[file_idx])
+                pbar.update(1)
     return functions_list, raw_list
 
 
