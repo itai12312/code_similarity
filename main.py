@@ -155,7 +155,7 @@ def get_parser():
     parser.add_argument('--metric', action="store", dest="metric", help="jaccard or cosine", default="jaccard")
     parser.add_argument('--matix_form', action="store", dest="matix_form", help="0-1 or tf-idf or none", default="none")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
-    parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
+    parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=200)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
     parser.add_argument('--profiler', action="store", dest="profiler", default=False, type=lambda x:x.lower in ['true', '1', 'y'])
 
