@@ -22,7 +22,7 @@ def str_ok(stri):
     return len(stri.replace("\n", "")) > 2
 
 def create_functions_list_from_df(filename):
-    df = pd.read_csv(filename, header = None, engine='python')
+    df = pd.read_csv(filename, header = None, engine='python', encoding='utf8') # error_bad_lines=False
     df = df[df[0].notnull()]
     starters = df.loc[df[0] == "BEGIN_METHOD"]
     enders = df.loc[df[0] == "END_METHOD"]
