@@ -36,16 +36,18 @@ def main_(params):
               'cosine': scipy.spatial.distance.cosine,
               'euclidean': scipy.spatial.distance.euclidean,
               'cityblock': scipy.spatial.distance.cityblock}[params.metric]
-    analyze_functions(bow_matrix, metric, lists, raw_lists, params.output_folder, list(vectorizer1.vocabulary_.keys()))
+    analyze_functions(bow_matrix, metric, lists, raw_lists,
+                      list(vectorizer1.vocabulary_.keys()),
+                      params)
 
 
-def analyze_functions(matrix, metric, lists, raw_lists, output_folder, vocab):
+def analyze_functions(matrix, metric, lists, raw_lists, vocab, params):
     # vfunc = np.vectorize(lambda a:metric(a.toarray(), matrix[0].toarray()), otypes=float)
     # out = vfunc(matrix[1:])
-    if not os.path.exists(join(output_folder, 'samples')):
-        os.mkdir(join(output_folder, 'samples'))
-    with open(join(output_folder, 'close_functions.txt'), 'w+') as f:
-        for j in range(10):
+    if not os.path.exists(join(params.output_folder, 'samples')):
+        os.mkdir(join(params.output_folder, 'samples'))
+    with open(join(params.output_folder, 'close_functions.txt'), 'w+') as f:
+        for j in range(params.top_similar_functions):
             idx, score = get_closest_idx(matrix, metric, j)
             assert j != idx
             confusion = {}
@@ -57,10 +59,10 @@ def analyze_functions(matrix, metric, lists, raw_lists, output_folder, vocab):
             f.write(lists[j].replace("\n", "")+"\n")
             f.write(f'closest match: {idx}\n')
             f.write(lists[idx].replace("\n", "")+"\n")
-            with open(join(output_folder, 'samples', 'close_functions_{}_input.txt'.format(j)), 'w+') as f1:
+            with open(join(params.output_folder, 'samples', 'close_functions_{}_input.txt'.format(j)), 'w+') as f1:
                 f1.write(raw_lists[j])
                 # f1.write(raw_lists[j].replace("\n", "")+"\n")
-            with open(join(output_folder, 'samples', 'close_functions_{}_closest.txt'.format(j)), 'w+') as f2:
+            with open(join(params.output_folder, 'samples', 'close_functions_{}_closest.txt'.format(j)), 'w+') as f2:
                 f2.write(raw_lists[idx])
                 #f2.write(raw_lists[idx].replace("\n", "")+"\n")
             pass
