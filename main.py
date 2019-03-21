@@ -193,8 +193,8 @@ def create_functions_list_from_filenames_list(files_list, output_folder):
                 functions_list +=temp
                 raw_list+= temp_raw
             except Exception as e:
-                print(filename)
-                print(e)
+                # print(filename)
+                # print(e)
                 code = f'{e}'
                 # print(traceback.print_exc())
             if code != "":
