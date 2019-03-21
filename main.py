@@ -13,6 +13,7 @@ import pathos.multiprocessing as multiprocessing
 import numpy as np
 import sklearn
 from utils import tsnescatterplot, create_functions_list_from_df
+from tqdm import tqdm, trange
 
 def main(args=None):
     parser = get_parser()
@@ -186,7 +187,7 @@ def create_functions_list_from_filenames_list(files_list, output_folder):
     functions_list = []
     raw_list = []
     with open(join(output_folder, 'error_parsing.txt'), 'w+') as f:
-        for filename in files_list:
+        for filename in tqdm(files_list, total=len(files_list), unit="files"):
             try:
                 temp, temp_raw, code = create_functions_list_from_df(filename)
                 functions_list +=temp
