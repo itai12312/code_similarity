@@ -28,9 +28,9 @@ def main_(params):
         os.mkdir(params.output_folder)
     mypath = join(params.input_folder, 'tokenized1')
     vectorizer1, lists, bow_matrix, raw_lists = vectorize_folder(mypath, params.files_limit, params.max_features)
-    if params.matrix_form == '0-1':
+    if params.matix_form == '0-1':
         bow_matrix[bow_matrix > 1] = 1
-    elif params.matrix_form == 'tf-idf':
+    elif params.matix_form == 'tf-idf':
         bow_matrix = bow_matrix*1./bow_matrix.sum(axis=1)[:,None]
     metric = {'jaccard': scipy.spatial.distance.jaccard,
               'cosine': scipy.spatial.distance.cosine,
@@ -153,9 +153,9 @@ def get_parser():
     parser.add_argument('--output_folder', action="store", dest="output_folder", help="output_folder", default="results")
     parser.add_argument('--classifier', action="store", dest="classifier", help="randomforest for now", default="randomforest")
     parser.add_argument('--metric', action="store", dest="metric", help="jaccard or cosine", default="jaccard")
-    parser.add_argument('--matrix_form', action="store", dest="matrix_form", help="0-1 or tf-idf or none", default="none")
+    parser.add_argument('--matix_form', action="store", dest="matix_form", help="0-1 or tf-idf or none", default="none")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
-    parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=200)
+    parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
     parser.add_argument('--profiler', action="store", dest="profiler", default=False, type=lambda x:x.lower in ['true', '1', 'y'])
 
@@ -166,10 +166,6 @@ def get_parser():
     parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
     return parser
 
-import numba as nb
-@nb.vectorize(target="cpu")
-def nb_vf(x):
-    return x+2*x*x+4*x*x*x
 
 def create_functions_list_from_filenames_list(files_list):
     functions_list = []
