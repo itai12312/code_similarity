@@ -248,12 +248,12 @@ def tsnescatterplot(output_folder, model, all_words, words_freq_genre):
 def mult_speed_up(func, array):
     with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
         # with tqdm(total=len(array)) as pbar:
-        # results = []
+        # results1 = []
         # for i, res in tqdm(enumerate(pool.imap(func, array))):  # imap_unordered
         #     pbar.update()
-        #     results.append(res)
+        #     results1.append(res)
         results = pool.map(func, array)
-    # results = pool.map(func, array)
+    # results1 = pool.map(func, array)
     # pool.close()
     # pool.join()
     return results
