@@ -15,22 +15,35 @@ import traceback
 import os
 import math
 
+
 def filter_type(x):
     return isinstance(x, (int, float))
+
 
 def str_ok(stri):
     return len(stri.replace("\n", "")) > 2
 
-def create_functions_list_from_df(filename):
+
+def print_code(f, code, filename, pbar):
+    if code != "":
+        f.write(f'{filename}: {code}\n')
+    # pbar.update(1)
+
+
+def create_functions_list_from_df(filename, f, pbar):
     try:
-        df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  #  error_bad_lines=False
+        df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  # error_bad_lines=False
         df = df[df[0].notnull()]
         starters = df.loc[df[0] == "BEGIN_METHOD"]
         enders = df.loc[df[0] == "END_METHOD"]
         if len(starters) != len(enders):
-            return [], [], f'has different number of start and end in parsed!!!', filename
+            code = f'has different number of start and end in parsed!!!'
+            print_code(f, code, filename, pbar)
+            return [], [], code, filename
         if len(starters) == 0 or len(enders) == 0:
-            return [], [],  f'no functions found!', filename
+            code = f'no functions found!'
+            print_code(f, code, filename, pbar)
+            return [], [],  code, filename
         zipped = list(zip(starters.index, enders.index))
         functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped]
         # # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
@@ -53,9 +66,13 @@ def create_functions_list_from_df(filename):
         functions_raw = ['\n'.join(data[int(begin):int(end)])
                          for (begin, end) in raw_ranges]
         # functions_raw = ['' for i in range(len(functions_list))]
-        return functions_list, functions_raw, "", filename
+        code = ""
+        print_code(f, code, filename, pbar)
+        return functions_list, functions_raw, code, filename
     except Exception as e:
-        return [],[], f'{e}', filename
+        code = f'{e}'
+        print_code(f, code, filename, pbar)
+        return [], [], code, filename
 
 
 def main2(params):

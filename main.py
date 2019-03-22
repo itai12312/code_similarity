@@ -203,28 +203,32 @@ def get_parser():
 def create_functions_list_from_filenames_list(files_list, output_folder, core_count):
     functions_list = []
     raw_list = []
+    sizecounter = len(files_list)
     # list(itertools.chain(*list_2d))
-    with open(join(output_folder, 'error_parsing.txt'), 'w+') as f, multiprocessing.Pool(processes=core_count) as p:
+    cur_time = time.time()
+    with open(join(output_folder, 'error_parsing.txt'), 'w+') as f, \
+            multiprocessing.Pool(processes=core_count) as p, \
+            tqdm(total=sizecounter, unit='files') as pbar:
         # sizecounter = 0
         # for filepath in tqdm(files_list, unit="files"):
         #     sizecounter.append(os.stat(filepath).st_size)
 
         # multiprocess speed up!!!
-        sizecounter = len(files_list)
+
         # imap_unordered, map
         # with tqdm(total=sizecounter, unit='B', unit_scale=True, unit_divisor=1024) as pbar:
-        with tqdm(total=sizecounter, unit='files') as pbar:
-            # chunksize
-            for i, (temp, temp_raw, code, filename) in (enumerate(p.imap(create_functions_list_from_df, files_list))):
-                # pbar.update()
-            # for file_idx, filename in enumerate(files_list):
-            #     temp, temp_raw, code = create_functions_list_from_df(filename)
-                functions_list +=temp
-                raw_list+= temp_raw
-                if code != "":
-                    f.write(f'{filename}: {code}\n')
-                # pbar.update(sizecounter[file_idx])
-                pbar.update()
+        key = partial(create_functions_list_from_df, f=f, pbar=pbar)
+        for i, (temp, temp_raw, code, filename) in (enumerate(p.imap(key, files_list))):
+            # pbar.update()
+        # for file_idx, filename in enumerate(files_list):
+        #     temp, temp_raw, code = create_functions_list_from_df(filename)
+            functions_list += temp
+            raw_list += temp_raw
+            # if code != "":
+            #     f.write(f'{filename}: {code}\n')
+            # pbar.update(sizecounter[file_idx])
+            pbar.update(1)
+    print(f'took {time.time()-cur_time} seconds')
     return functions_list, raw_list
 
 
