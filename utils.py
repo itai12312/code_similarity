@@ -25,6 +25,7 @@ def create_functions_list_from_df(filename):
     try:
         df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  #  error_bad_lines=False
         df = df[df[0].notnull()]
+        df = create_functions_list_from_df(df)
         starters = df.loc[df[0] == "BEGIN_METHOD"]
         enders = df.loc[df[0] == "END_METHOD"]
         if len(starters) != len(enders):
