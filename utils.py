@@ -16,8 +16,10 @@ import os
 import math
 import parse
 
+
 def filter_type(x):
     return isinstance(x, (int, float))
+
 
 def str_ok(stri):
     return len(stri.replace("\n", "")) > 2

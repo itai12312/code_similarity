@@ -211,7 +211,7 @@ def create_functions_list_from_filenames_list(files_list, output_folder, core_co
         #     sizecounter.append(os.stat(filepath).st_size)
 
         # multiprocess speed up!!!
-        sizecounter = len(files_list)
+
         # imap_unordered, map
         # with tqdm(total=sizecounter, unit='B', unit_scale=True, unit_divisor=1024) as pbar:
         gt = pd.read_csv(os.path.join(params.input_folder, 'results1.csv'), engine='python', encoding='utf8', error_bad_lines=False)
