@@ -14,6 +14,7 @@ import sklearn
 import traceback
 import os
 import math
+import parse
 
 def filter_type(x):
     return isinstance(x, (int, float))
@@ -21,15 +22,21 @@ def filter_type(x):
 def str_ok(stri):
     return len(stri.replace("\n", "")) > 2
 
-def create_functions_list_from_df(filename):
-    df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  #  error_bad_lines=False
+def create_functions_list_from_filename(filename, gt):
+    try:
+        df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  #  error_bad_lines=False
+    except Exception as e:
+        # print(filename, e)
+        return [],[], f'{e}', filename
+
     df = df[df[0].notnull()]
+    # df = create_functions_list_from_df(df)
     starters = df.loc[df[0] == "BEGIN_METHOD"]
     enders = df.loc[df[0] == "END_METHOD"]
     if len(starters) != len(enders):
-        return f'{filename} has different number of start and end in parsed!!!'
+        return [], [], f'has different number of start and end in parsed!!!', filename
     if len(starters) == 0 or len(enders) == 0:
-        return [], [],  f'no functions found!'
+        return [], [],  f'no functions found!', filename
     zipped = list(zip(starters.index, enders.index))
     functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped]
     # # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
@@ -51,8 +58,17 @@ def create_functions_list_from_df(filename):
     raw_ranges = list(zip(raw_start.values[:,2], raw_end.values[:,2]))
     functions_raw = ['\n'.join(data[int(begin):int(end)])
                      for (begin, end) in raw_ranges]
+
+    rootpath, realfilename = parse.parse('{}/tokenized1/{}', filename)
+    gt_values = []
+    for (begin, end) in raw_ranges:
+        possibble = gt.loc["\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'], 'nMethod_Line'].values
+        if begin in possibble:
+            gt_values.append(1)
+        else:
+            gt_values.append(0)
     # functions_raw = ['' for i in range(len(functions_list))]
-    return functions_list, functions_raw, ""
+    return functions_list, functions_raw, gt_values, "", filename
 
 
 def main2(params):
@@ -71,7 +87,7 @@ def main2(params):
     functions_list = []
     for begin, end in zipped:
         functions_list.append(df[0].iloc[begin:end+1].str.cat(sep=' '))
-    create_functions_list_from_df(df)
+    # create_functions_list_from_df(df)
 
 
 def plotting(X_train, y_train, X_test, y_test, model, figname, output_folder):
@@ -178,3 +194,48 @@ def text_to_vec(text, model, i):
 def word_to_vec_plt(reduced_results, y, embedding_model, output_folder, model):
     features = np.array([text_to_vec(reduced_results[i], embedding_model, i) for i in range(len(reduced_results))])
     plott(features, y, model, 'word_to_vec_approach.png', output_folder)
+
+
+def fix_blocks_and_methods(input_df):
+    df = input_df
+
+    # Create a column with the lines of the PREVIOUS token    
+    df[4] = df[2].shift(1)
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
+
+    # Copy the line number to the END_BLOCK and END_METHOD
+    df[2] = np.where(df[0]=="END_BLOCK",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
+    df[2] = np.where(df[0]=="END_METHOD",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
+
+    # Create a column with the lines of the NEXT token
+    df[4] = df[2].shift(-1)
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
+
+    # Copy the line number for BEGIN_BLOCK and BEGIN_METHOD
+    df[2] = np.where(df[0]=="BEGIN_BLOCK",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
+    df[2] = np.where(df[0]=="BEGIN_METHOD",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
+
+    # Set Id for BLOCK/METHOD lines
+    df[1] = np.where(df[0]=="BEGIN_METHOD",8001,df[1])
+    df[1] = np.where(df[0]=="END_METHOD",8002,df[1])
+    df[1] = np.where(df[0]=="BEGIN_BLOCK",8003,df[1])
+    df[1] = np.where(df[0]=="END_BLOCK",8004,df[1])
+
+    # Set column to 0 for METHOD/BLOCK lines
+    df[3] = np.where(df[0]=="BEGIN_METHOD",0,df[3])
+    df[3] = np.where(df[0]=="END_METHOD",0,df[3])
+    df[3] = np.where(df[0]=="BEGIN_BLOCK",0,df[3])
+    df[3] = np.where(df[0]=="END_BLOCK",0,df[3])
+
+    # Remove helper column
+    return(df.drop(columns=[4]))

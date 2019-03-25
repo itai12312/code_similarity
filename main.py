@@ -1,3 +1,7 @@
+from functools import partial
+
+import time
+
 import argparse
 import traceback
 import itertools
@@ -12,8 +16,9 @@ from os.path import isfile, join
 import pathos.multiprocessing as multiprocessing
 import numpy as np
 import sklearn
-from utils import tsnescatterplot, create_functions_list_from_df
+from utils import tsnescatterplot, create_functions_list_from_filename
 from tqdm import tqdm, trange
+# tqdm.auto
 import itertools
 
 def main(args=None):
@@ -28,8 +33,11 @@ def main(args=None):
 def main_(params):
     if not os.path.exists(params.output_folder):
         os.mkdir(params.output_folder)
+    if params.cores_to_use == -1:
+        params.cores_to_use = multiprocessing.cpu_count()
+    print(f'using {params.cores_to_use} cores')
     mypath = join(params.input_folder, 'tokenized1')
-    vectorizer1, lists, bow_matrix, raw_lists = vectorize_folder(mypath, params.files_limit, params.max_features, params.output_folder)
+    vectorizer1, lists, bow_matrix, raw_lists, gt_values = vectorize_folder(mypath, params.files_limit, params.max_features, params.output_folder, params.cores_to_use)
     if params.matix_form == '0-1':
         bow_matrix[bow_matrix > 1] = 1
     elif params.matix_form == 'tf-idf':
@@ -40,23 +48,20 @@ def main_(params):
               'cityblock': scipy.spatial.distance.cityblock}[params.metric]
     analyze_functions(bow_matrix, metric, lists, raw_lists,
                       list(vectorizer1.vocabulary_.keys()),
-                      params)
+                      params, gt_values)
 
 
-def analyze_functions(matrix, metric, lists, raw_lists, vocab, params):
+def analyze_functions(matrix, metric, lists, raw_lists, vocab, params, gt_values):
     # vfunc = np.vectorize(lambda a:metric(a.toarray(), matrix[0].toarray()), otypes=float)
     # out = vfunc(matrix[1:])
+    cur_time = time.time()
     if not os.path.exists(join(params.output_folder, 'samples')):
         os.mkdir(join(params.output_folder, 'samples'))
+    func_ = partial(get_closest_function, matrix=matrix, metric=metric)
     with open(join(params.output_folder, 'close_functions.txt'), 'w+') as f:
         for j in range(params.top_similar_functions):
-            idx, score = get_closest_idx(matrix, metric, j)
-            assert j != idx
-            confusion = {}
-            for var1, var2 in itertools.product(range(2), range(2)):
-                indices = np.where((matrix[j].toarray()==var1) & (matrix[idx].toarray()==var2))
-                confusion[(var1, var2)]  = len(indices[1])
-            f.write(f'results: input {j} with score {score}\n')
+            confusion, idx, score, j = get_closest_function(j, matrix, metric)
+            f.write(f'results1: input {j} with score {score}\n')
             f.write(f'{confusion}\n')
             f.write(lists[j].replace("\n", "")+"\n")
             f.write(f'closest match: {idx}\n')
@@ -68,6 +73,17 @@ def analyze_functions(matrix, metric, lists, raw_lists, vocab, params):
                 f2.write(raw_lists[idx])
                 #f2.write(raw_lists[idx].replace("\n", "")+"\n")
             pass
+    print(f'analysis took {time.time()-cur_time} seconds')
+
+
+def get_closest_function(j, matrix, metric):
+    idx, score = get_closest_idx(matrix, metric, j)
+    assert j != idx
+    confusion = {}
+    for var1, var2 in itertools.product(range(2), range(2)):
+        indices = np.where((matrix[j].toarray() == var1) & (matrix[idx].toarray() == var2))
+        confusion[(var1, var2)] = len(indices[1])
+    return confusion, idx, score, j
 
 
 def get_closest_idx(matrix, metric, j):
@@ -152,12 +168,12 @@ def get_avg_features(reviews, model, num_features):
 def mult_speed_up(func, array):
     with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
         # with tqdm(total=len(array)) as pbar:
-        # results = []
+        # results1 = []
         # for i, res in tqdm(enumerate(pool.imap(func, array))):  # imap_unordered
         #     pbar.update()
-        #     results.append(res)
+        #     results1.append(res)
         results = pool.map(func, array)
-    # results = pool.map(func, array)
+    # results1 = pool.map(func, array)
     # pool.close()
     # pool.join()
     return results
@@ -179,39 +195,40 @@ def get_parser():
     parser.add_argument('--top_similar_functions', action="store", dest="top_similar_functions", type=int, default=10)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
     parser.add_argument('--num_workers', action="store", dest="num_workers", type=int, default=4)
+    parser.add_argument('--cores_to_use', action="store", dest="cores_to_use", type=int, default=-1)
     parser.add_argument('--context', action="store", dest="context", type=int, default=10)
     parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
     return parser
 
 
-def create_functions_list_from_filenames_list(files_list, output_folder):
+def create_functions_list_from_filenames_list(files_list, output_folder, core_count):
     functions_list = []
     raw_list = []
-    # list(itertools.chain(*list2d))
-    with open(join(output_folder, 'error_parsing.txt'), 'w+') as f:
+    gt_values = []
+    with open(join(output_folder, 'error_parsing.txt'), 'w+') as f, multiprocessing.Pool(processes=core_count) as p:
         # sizecounter = 0
         # for filepath in tqdm(files_list, unit="files"):
         #     sizecounter.append(os.stat(filepath).st_size)
+
         # multiprocess speed up!!!
         sizecounter = len(files_list)
-        with tqdm(total=sizecounter,
-                  unit='B', unit_scale=True, unit_divisor=1024) as pbar:
-            # , total=len(files_list), unit="files")
-            for file_idx, filename in enumerate(files_list):
-                try:
-                    temp, temp_raw, code = create_functions_list_from_df(filename)
-                    functions_list +=temp
-                    raw_list+= temp_raw
-                except Exception as e:
-                    # print(filename)
-                    # print(e)
-                    code = f'{e}'
-                    # print(traceback.print_exc())
+        # imap_unordered, map
+        # with tqdm(total=sizecounter, unit='B', unit_scale=True, unit_divisor=1024) as pbar:
+        gt = pd.read_csv(os.path.join(params.input_folder, 'results1.csv'), engine='python', encoding='utf8', error_bad_lines=False)
+        with tqdm(total=sizecounter, unit='files') as pbar:
+            # chunksize
+            for i, (temp, temp_raw, gt, code, filename) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt) for file_name in files_list], chunksize=10))):
+                # pbar.update()
+            # for file_idx, filename in enumerate(files_list):
+            #     temp, temp_raw, code = create_functions_list_from_df(filename)
+                functions_list +=temp
+                raw_list+= temp_raw
+                gt_values += gt
                 if code != "":
                     f.write(f'{filename}: {code}\n')
                 # pbar.update(sizecounter[file_idx])
-                pbar.update(1)
-    return functions_list, raw_list
+                pbar.update()
+    return functions_list, raw_list, gt_values
 
 
 def vectorize_text(text, max_features):
@@ -227,11 +244,11 @@ def get_filenames(mypath):
     return filenames
 
 
-def vectorize_folder(path, limit, max_features, output_folder):
+def vectorize_folder(path, limit, max_features, output_folder, core_count):
     files_list = get_filenames(path)
-    functions_list, raw_list = create_functions_list_from_filenames_list(files_list[:limit], output_folder)
+    functions_list, raw_list, gt_values = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count)
     vectorizer, bow_matrix = vectorize_text(functions_list, max_features)
-    return vectorizer, functions_list, bow_matrix, raw_list
+    return vectorizer, functions_list, bow_matrix, raw_list, gt_values
 
 
 def main1(lists, params):
