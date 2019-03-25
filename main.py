@@ -14,6 +14,7 @@ import numpy as np
 import sklearn
 from utils import tsnescatterplot, create_functions_list_from_df
 from tqdm import tqdm, trange
+import itertools
 
 def main(args=None):
     parser = get_parser()
@@ -186,6 +187,7 @@ def get_parser():
 def create_functions_list_from_filenames_list(files_list, output_folder):
     functions_list = []
     raw_list = []
+    # list(itertools.chain(*list2d))
     with open(join(output_folder, 'error_parsing.txt'), 'w+') as f:
         # sizecounter = 0
         # for filepath in tqdm(files_list, unit="files"):
