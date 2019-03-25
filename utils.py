@@ -193,6 +193,8 @@ def fix_blocks_and_methods(input_df):
     df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
     df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
     df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
 
     # Copy the line number to the END_BLOCK and END_METHOD
     df[2] = np.where(df[0]=="END_BLOCK",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
@@ -200,6 +202,8 @@ def fix_blocks_and_methods(input_df):
 
     # Create a column with the lines of the NEXT token
     df[4] = df[2].shift(-1)
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
+    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
     df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
     df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
     df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
