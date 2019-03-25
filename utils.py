@@ -181,3 +181,38 @@ def text_to_vec(text, model, i):
 def word_to_vec_plt(reduced_results, y, embedding_model, output_folder, model):
     features = np.array([text_to_vec(reduced_results[i], embedding_model, i) for i in range(len(reduced_results))])
     plott(features, y, model, 'word_to_vec_approach.png', output_folder)
+
+
+def fix_blocks_and_methods(input_df):
+    df = input_df
+
+    # Create a column with the lines of the PREVIOUS token    
+    df[4] = df[2].shift(1)
+    df[4] = np.where(np.isnan(df[4]),df[4][df.shape[0]-2],df[4]) # last token is not set, so fix it
+
+    # Copy the line number to the END_BLOCK and END_METHOD
+    df[2] = np.where(df[0]=="END_BLOCK",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
+    df[2] = np.where(df[0]=="END_METHOD",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
+
+    # Create a column with the lines of the NEXT token
+    df[4] = df[2].shift(-1)
+    df[4] = np.where(np.isnan(df[4]),df[4][0],df[4]) # Fix "still NaN" values
+
+    # Copy the line number for BEGIN_BLOCK and BEGIN_METHOD
+    df[2] = np.where(df[0]=="BEGIN_BLOCK",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
+    df[2] = np.where(df[0]=="BEGIN_METHOD",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
+
+    # Set Id for BLOCK/METHOD lines
+    df[1] = np.where(df[0]=="BEGIN_METHOD",8001,df[1])
+    df[1] = np.where(df[0]=="END_METHOD",8002,df[1])
+    df[1] = np.where(df[0]=="BEGIN_BLOCK",8003,df[1])
+    df[1] = np.where(df[0]=="END_BLOCK",8004,df[1])
+
+    # Set column to 0 for METHOD/BLOCK lines
+    df[3] = np.where(df[0]=="BEGIN_METHOD",0,df[3])
+    df[3] = np.where(df[0]=="END_METHOD",0,df[3])
+    df[3] = np.where(df[0]=="BEGIN_BLOCK",0,df[3])
+    df[3] = np.where(df[0]=="END_BLOCK",0,df[3])
+
+    # Remove helper column
+    return(df.drop(columns=[4]))
