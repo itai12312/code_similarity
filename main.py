@@ -37,7 +37,9 @@ def main_(params):
         params.cores_to_use = multiprocessing.cpu_count()
     print(f'using {params.cores_to_use} cores')
     mypath = join(params.input_folder, 'tokenized1')
-    vectorizer1, lists, bow_matrix, raw_lists, gt_values = vectorize_folder(mypath, params.files_limit, params.max_features, params.output_folder, params.cores_to_use)
+    vectorizer1, lists, bow_matrix, raw_lists, gt_values = vectorize_folder(mypath, params.files_limit,
+                                                                            params.max_features, params.output_folder, params.cores_to_use,
+                                                                            params.input_folder)
     if params.matix_form == '0-1':
         bow_matrix[bow_matrix > 1] = 1
     elif params.matix_form == 'tf-idf':
@@ -201,10 +203,11 @@ def get_parser():
     return parser
 
 
-def create_functions_list_from_filenames_list(files_list, output_folder, core_count):
+def create_functions_list_from_filenames_list(files_list, output_folder, core_count, input_folder):
     functions_list = []
     raw_list = []
     gt_values = []
+    sizecounter = len(files_list)
     with open(join(output_folder, 'error_parsing.txt'), 'w+') as f, multiprocessing.Pool(processes=core_count) as p:
         # sizecounter = 0
         # for filepath in tqdm(files_list, unit="files"):
@@ -214,7 +217,7 @@ def create_functions_list_from_filenames_list(files_list, output_folder, core_co
 
         # imap_unordered, map
         # with tqdm(total=sizecounter, unit='B', unit_scale=True, unit_divisor=1024) as pbar:
-        gt = pd.read_csv(os.path.join(params.input_folder, 'results1.csv'), engine='python', encoding='utf8', error_bad_lines=False)
+        gt = pd.read_csv(os.path.join(input_folder, 'results1.csv'), engine='python', encoding='utf8', error_bad_lines=False)
         with tqdm(total=sizecounter, unit='files') as pbar:
             # chunksize
             for i, (temp, temp_raw, gt, code, filename) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt) for file_name in files_list], chunksize=10))):
@@ -244,9 +247,9 @@ def get_filenames(mypath):
     return filenames
 
 
-def vectorize_folder(path, limit, max_features, output_folder, core_count):
+def vectorize_folder(path, limit, max_features, output_folder, core_count, input_folder):
     files_list = get_filenames(path)
-    functions_list, raw_list, gt_values = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count)
+    functions_list, raw_list, gt_values = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count, input_folder)
     vectorizer, bow_matrix = vectorize_text(functions_list, max_features)
     return vectorizer, functions_list, bow_matrix, raw_list, gt_values
 

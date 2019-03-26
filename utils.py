@@ -24,21 +24,22 @@ def filter_type(x):
 def str_ok(stri):
     return len(stri.replace("\n", "")) > 2
 
-def create_functions_list_from_filename(filename, gt):
+def create_functions_list_from_filename(item):
+    (filename, gt) = item
     try:
         df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  #  error_bad_lines=False
     except Exception as e:
         # print(filename, e)
-        return [],[], f'{e}', filename
+        return [],[],[], f'{e}', filename
 
     df = df[df[0].notnull()]
     # df = create_functions_list_from_df(df)
     starters = df.loc[df[0] == "BEGIN_METHOD"]
     enders = df.loc[df[0] == "END_METHOD"]
     if len(starters) != len(enders):
-        return [], [], f'has different number of start and end in parsed!!!', filename
+        return [], [],[], f'has different number of start and end in parsed!!!', filename
     if len(starters) == 0 or len(enders) == 0:
-        return [], [],  f'no functions found!', filename
+        return [], [],[],  f'no functions found!', filename
     zipped = list(zip(starters.index, enders.index))
     functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped]
     # # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
