@@ -8,17 +8,22 @@ import itertools
 import pandas as pd
 from gensim.models import word2vec
 import scipy
+from scipy.spatial.distance import squareform
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import os
 from os import listdir
 from os.path import isfile, join
 import pathos.multiprocessing as multiprocessing
 import numpy as np
 import sklearn
-from utils import tsnescatterplot, create_functions_list_from_df
+from utils import tsnescatterplot, create_functions_list_from_filename
 from tqdm import tqdm, trange
-# from tqdm.auto import tqdm
+# tqdm.auto
+import itertools
+from scipy.cluster.hierarchy import dendrogram, linkage
+import matplotlib.pyplot as plt
+
 
 def main(args=None):
     parser = get_parser()
@@ -36,7 +41,11 @@ def main_(params):
         params.cores_to_use = multiprocessing.cpu_count()
     print(f'using {params.cores_to_use} cores')
     mypath = join(params.input_folder, 'tokenized1')
-    vectorizer1, lists, bow_matrix, raw_lists = vectorize_folder(mypath, params.files_limit, params.max_features, params.output_folder, params.cores_to_use)
+    vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[params.vectorizer]
+    vectorizer = vectorizer(max_features=params.max_features, ngram_range=(1,params.ngram_range))
+    vectorizer1, lists, bow_matrix, raw_lists, gt_values = vectorize_folder(mypath, params.files_limit,
+                                                                            vectorizer, params.output_folder, params.cores_to_use,
+                                                                            params.input_folder)
     if params.matix_form == '0-1':
         bow_matrix[bow_matrix > 1] = 1
     elif params.matix_form == 'tf-idf':
@@ -45,18 +54,33 @@ def main_(params):
               'cosine': scipy.spatial.distance.cosine,
               'euclidean': scipy.spatial.distance.euclidean,
               'cityblock': scipy.spatial.distance.cityblock}[params.metric]
-    analyze_functions(bow_matrix, metric, lists, raw_lists,
+    analyze_functions2(bow_matrix, metric, lists, raw_lists,
                       list(vectorizer1.vocabulary_.keys()),
-                      params)
+                      params, gt_values)
+
+def analyze_functions2(matrix, metric, lists, raw_lists, vocab, params, gt_values):
+    # distances = [[metric(matrix[i].toarray(), matrix[j].toarray()) for i in range(matrix.shape[0])] for j in range(matrix.shape[0])]
+    # distances = np.array(distances)
+    distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
+    fig = plt.figure(figsize=(25, 10))
+    plt.title(params.clustering_method)
+    lnk = linkage(squareform(distances), params.clustering_method)
+    # TODO:get list of filenames and locations!!
+    dendrogram(lnk, labels=gt_values, color_threshold=0)
+    plt.ylim(0, 5.5)
+    plt.grid(axis='y')
+    plt.tight_layout()
+    plt.show()
+    plt.savefig(os.path.join(params.output_folder, 'dendogram.png'))
+    pass
 
 
-def analyze_functions(matrix, metric, lists, raw_lists, vocab, params):
+def analyze_functions(matrix, metric, lists, raw_lists, vocab, params, gt_values):
     # vfunc = np.vectorize(lambda a:metric(a.toarray(), matrix[0].toarray()), otypes=float)
     # out = vfunc(matrix[1:])
     cur_time = time.time()
     if not os.path.exists(join(params.output_folder, 'samples')):
         os.mkdir(join(params.output_folder, 'samples'))
-    func_ = partial(get_closest_function, matrix=matrix, metric=metric)
     with open(join(params.output_folder, 'close_functions.txt'), 'w+') as f:
         for j in range(params.top_similar_functions):
             confusion, idx, score, j = get_closest_function(j, matrix, metric)
@@ -184,6 +208,8 @@ def get_parser():
     parser.add_argument('--output_folder', action="store", dest="output_folder", help="output_folder", default="results")
     parser.add_argument('--classifier', action="store", dest="classifier", help="randomforest for now", default="randomforest")
     parser.add_argument('--metric', action="store", dest="metric", help="jaccard or cosine", default="jaccard")
+    parser.add_argument('--vectorizer', action="store", dest="vectorizer", help="count or tfidf", default="count")
+    parser.add_argument('--clustering_method', action="store", dest="clustering_method", help="single complete average ward weighted centroid median", default="average")
     parser.add_argument('--matix_form', action="store", dest="matix_form", help="0-1 or tf-idf or none", default="none")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
     parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
@@ -191,6 +217,7 @@ def get_parser():
     parser.add_argument('--profiler', action="store_true", dest="profiler", default=False)  # type=lambda x:x.lower in ['true', '1', 'y']
 
     parser.add_argument('--num_features', action="store", dest="num_features", type=int, default=300)
+    parser.add_argument('--ngram_range', action="store", dest="ngram_range", type=int, default=1)
     parser.add_argument('--top_similar_functions', action="store", dest="top_similar_functions", type=int, default=10)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
     parser.add_argument('--num_workers', action="store", dest="num_workers", type=int, default=4)
@@ -200,37 +227,39 @@ def get_parser():
     return parser
 
 
-def create_functions_list_from_filenames_list(files_list, output_folder, core_count):
+def create_functions_list_from_filenames_list(files_list, output_folder, core_count, input_folder):
     functions_list = []
     raw_list = []
-    # list(itertools.chain(*list_2d))
+    gt_values = []
+    sizecounter = len(files_list)
     with open(join(output_folder, 'error_parsing.txt'), 'w+') as f, multiprocessing.Pool(processes=core_count) as p:
         # sizecounter = 0
         # for filepath in tqdm(files_list, unit="files"):
         #     sizecounter.append(os.stat(filepath).st_size)
 
         # multiprocess speed up!!!
-        sizecounter = len(files_list)
+
         # imap_unordered, map
         # with tqdm(total=sizecounter, unit='B', unit_scale=True, unit_divisor=1024) as pbar:
+        gt = pd.read_csv(os.path.join(input_folder, 'results1.csv'), engine='python', encoding='utf8', error_bad_lines=False)
         with tqdm(total=sizecounter, unit='files') as pbar:
             # chunksize
-            for i, (temp, temp_raw, code, filename) in (enumerate(p.imap(create_functions_list_from_df, files_list))):
+            for i, (temp, temp_raw, gt, code, filename) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt) for file_name in files_list], chunksize=10))):
                 # pbar.update()
             # for file_idx, filename in enumerate(files_list):
             #     temp, temp_raw, code = create_functions_list_from_df(filename)
                 functions_list +=temp
                 raw_list+= temp_raw
+                gt_values += gt
                 if code != "":
                     f.write(f'{filename}: {code}\n')
                 # pbar.update(sizecounter[file_idx])
                 pbar.update()
-    return functions_list, raw_list
+    return functions_list, raw_list, gt_values
 
 
-def vectorize_text(text, max_features):
+def vectorize_text(text, vectorizer):
     # create the transform
-    vectorizer = CountVectorizer(max_features = max_features)
     # build vocab
     bow_matrix = vectorizer.fit_transform(text)
     return vectorizer, bow_matrix
@@ -241,11 +270,11 @@ def get_filenames(mypath):
     return filenames
 
 
-def vectorize_folder(path, limit, max_features, output_folder, core_count):
+def vectorize_folder(path, limit, vectorizer, output_folder, core_count, input_folder):
     files_list = get_filenames(path)
-    functions_list, raw_list = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count)
-    vectorizer, bow_matrix = vectorize_text(functions_list, max_features)
-    return vectorizer, functions_list, bow_matrix, raw_list
+    functions_list, raw_list, gt_values = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count, input_folder)
+    vectorizer, bow_matrix = vectorize_text(functions_list, vectorizer)
+    return vectorizer, functions_list, bow_matrix, raw_list, gt_values
 
 
 def main1(lists, params):
