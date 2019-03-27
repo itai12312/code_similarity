@@ -31,8 +31,10 @@ def create_functions_list_from_filename(item):
     except Exception as e:
         # print(filename, e)
         return [],[],[], f'{e}', filename
-
+    
     df = df[df[0].notnull()]
+    if len(df.index) == 0:
+        return [], [],[],  f'no functions found!', filename
     # df = create_functions_list_from_df(df)
     starters = df.loc[df[0] == "BEGIN_METHOD"]
     enders = df.loc[df[0] == "END_METHOD"]
