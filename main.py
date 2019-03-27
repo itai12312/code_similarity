@@ -221,7 +221,7 @@ def get_parser():
     parser.add_argument('--top_similar_functions', action="store", dest="top_similar_functions", type=int, default=10)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
     parser.add_argument('--num_workers', action="store", dest="num_workers", type=int, default=4)
-    parser.add_argument('--cores_to_use', action="store", dest="cores_to_use", type=int, default=-1)
+    parser.add_argument('--cores_to_use', action="store", dest="cores_to_use", type=int, default=1)
     parser.add_argument('--context', action="store", dest="context", type=int, default=10)
     parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
     return parser
@@ -232,7 +232,7 @@ def create_functions_list_from_filenames_list(files_list, output_folder, core_co
     raw_list = []
     gt_values = []
     sizecounter = len(files_list)
-    with open(join(output_folder, 'error_parsing.txt'), 'w+') as f, multiprocessing.Pool(processes=core_count) as p:
+    with open(join(output_folder, 'error_parsing.txt'), 'w+') as f:
         # sizecounter = 0
         # for filepath in tqdm(files_list, unit="files"):
         #     sizecounter.append(os.stat(filepath).st_size)
@@ -244,18 +244,26 @@ def create_functions_list_from_filenames_list(files_list, output_folder, core_co
         gt = pd.read_csv(os.path.join(input_folder, 'results1.csv'), engine='python', encoding='utf8', error_bad_lines=False)
         with tqdm(total=sizecounter, unit='files') as pbar:
             # chunksize
-            for i, (temp, temp_raw, gt, code, filename) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt) for file_name in files_list], chunksize=10))):
-                # pbar.update()
-            # for file_idx, filename in enumerate(files_list):
-            #     temp, temp_raw, code = create_functions_list_from_df(filename)
-                functions_list +=temp
-                raw_list+= temp_raw
-                gt_values += gt
-                if code != "":
-                    f.write(f'{filename}: {code}\n')
-                # pbar.update(sizecounter[file_idx])
-                pbar.update()
+            if core_count > 1:
+                with multiprocessing.Pool(processes=core_count) as p:
+                    for i, (temp, temp_raw, temp_gt, code, filename) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt) for file_name in files_list], chunksize=10))):
+                        functions_list, gt_values, raw_list = inner_loop(code, f, filename, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw)
+            else:
+                for i, filename in enumerate(files_list):
+                    temp, temp_raw, temp_gt, code, filename = create_functions_list_from_filename((filename, gt))
+                    functions_list, gt_values, raw_list = inner_loop(code, f, filename, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw)
     return functions_list, raw_list, gt_values
+
+
+def inner_loop(code, f, filename, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw):
+    functions_list += temp
+    raw_list += temp_raw
+    gt_values += temp_gt
+    if code != "":
+        f.write(f'{filename}: {code}\n')
+    # pbar.update(sizecounter[file_idx])
+    pbar.update()
+    return functions_list, gt_values, raw_list
 
 
 def vectorize_text(text, vectorizer):
