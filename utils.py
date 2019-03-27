@@ -28,9 +28,11 @@ def create_functions_list_from_filename(item):
     (filename, gt) = item
     try:
         df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  #  error_bad_lines=False
+        
     except Exception as e:
         # print(filename, e)
         return [],[],[], f'{e}', filename
+    
     
     df = df[df[0].notnull()]
     if len(df.index) == 0:
@@ -50,12 +52,21 @@ def create_functions_list_from_filename(item):
         data = f.read().splitlines()
     raw_start = df.loc[starters.index+1]
     # raw_end = df.loc[enders.index-1]
+    # df[2] = pd.to_numeric(df[2])
     curs = []
     for idx in range(len(enders.index)):
         cur = enders.index[idx]
         realidx = list(df.index).index(cur)
-        while math.isnan(df.values[realidx, 2]):
+        
+        # if isinstance(temp, str):
+        #     try:
+        #         temp = int(temp)
+        #     except Exception:
+        #         pass
+        temp = df.values[realidx, 2]
+        while temp is None or math.isnan(temp):
             realidx -= 1
+            temp = df.values[realidx, 2]
         curs.append(df.index[realidx])
     raw_end = df.loc[curs]
 

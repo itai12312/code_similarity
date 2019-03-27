@@ -1,7 +1,4 @@
-from functools import partial
-
 import time
-
 import argparse
 import traceback
 import itertools
@@ -23,6 +20,11 @@ from tqdm import tqdm, trange
 import itertools
 from scipy.cluster.hierarchy import dendrogram, linkage
 import matplotlib.pyplot as plt
+
+METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
+                    'cosine': scipy.spatial.distance.cosine,
+                    'euclidean': scipy.spatial.distance.euclidean,
+                    'cityblock': scipy.spatial.distance.cityblock}
 
 
 def main(args=None):
@@ -47,22 +49,22 @@ def main_(params):
                                                                             vectorizer, params.output_folder, params.cores_to_use,
                                                                             params.input_folder)
     if params.matix_form == '0-1':
-        bow_matrix[bow_matrix > 1] = 1
+        assert params.vectorizer == 'count'
+        bow_matrix[bow_matrix >= 1.] = 1
+        # bow_matrix[bow_matrix == 0.] = 0
+        # bow_matrix = bow_matrix.astype(int)
     elif params.matix_form == 'tf-idf':
         bow_matrix = bow_matrix*1./bow_matrix.sum(axis=1)[:,None]
-    metric = {'jaccard': scipy.spatial.distance.jaccard,
-              'cosine': scipy.spatial.distance.cosine,
-              'euclidean': scipy.spatial.distance.euclidean,
-              'cityblock': scipy.spatial.distance.cityblock}[params.metric]
-    analyze_functions2(bow_matrix, metric, lists, raw_lists,
+    analyze_functions2(bow_matrix, lists, raw_lists,
                       list(vectorizer1.vocabulary_.keys()),
                       params, gt_values)
 
-def analyze_functions2(matrix, metric, lists, raw_lists, vocab, params, gt_values):
+
+def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
     # distances = [[metric(matrix[i].toarray(), matrix[j].toarray()) for i in range(matrix.shape[0])] for j in range(matrix.shape[0])]
     # distances = np.array(distances)
     distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
-    fig = plt.figure(figsize=(25, 10))
+    # fig = plt.figure(figsize=(25, 10))
     plt.title(params.clustering_method)
     lnk = linkage(squareform(distances), params.clustering_method)
     # TODO:get list of filenames and locations!!
@@ -70,8 +72,8 @@ def analyze_functions2(matrix, metric, lists, raw_lists, vocab, params, gt_value
     plt.ylim(0, 5.5)
     plt.grid(axis='y')
     plt.tight_layout()
-    plt.show()
     plt.savefig(os.path.join(params.output_folder, 'dendogram.png'))
+    plt.show()
     pass
 
 
@@ -159,6 +161,9 @@ def profile(params):
     import cProfile
     pr = cProfile.Profile()
     pr.enable()
+    # from pycallgraph import PyCallGraph
+    # from pycallgraph.output import GraphvizOutput
+    # with PyCallGraph(output=GraphvizOutput()):
     main_(params)
     pr.disable()
     # cumtime, ncalls
