@@ -55,9 +55,11 @@ def main_(params):
         # bow_matrix = bow_matrix.astype(int)
     elif params.matix_form == 'tf-idf':
         bow_matrix = bow_matrix*1./bow_matrix.sum(axis=1)[:,None]
-    analyze_functions2(bow_matrix, lists, raw_lists,
-                      list(vectorizer1.vocabulary_.keys()),
-                      params, gt_values)
+    vocab = list(vectorizer1.vocabulary_.keys())
+    intersting_indices = analyze_functions(bow_matrix, METRIC_FUNCTIONS[params.metric], lists, raw_lists,
+                      vocab, params, gt_values)
+    analyze_functions2(bow_matrix[intersting_indices], lists[intersting_indices], raw_lists[intersting_indices],
+                       vocab, params, gt_values[intersting_indices])
 
 
 def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
@@ -83,6 +85,7 @@ def analyze_functions(matrix, metric, lists, raw_lists, vocab, params, gt_values
     cur_time = time.time()
     if not os.path.exists(join(params.output_folder, 'samples')):
         os.mkdir(join(params.output_folder, 'samples'))
+    all_indices = set()
     with open(join(params.output_folder, 'close_functions.txt'), 'w+') as f:
         for j in range(params.top_similar_functions):
             confusion, idx, score, j = get_closest_function(j, matrix, metric)
@@ -97,8 +100,9 @@ def analyze_functions(matrix, metric, lists, raw_lists, vocab, params, gt_values
             with open(join(params.output_folder, 'samples', 'close_functions_{}_closest.txt'.format(j)), 'w+') as f2:
                 f2.write(raw_lists[idx])
                 #f2.write(raw_lists[idx].replace("\n", "")+"\n")
-            pass
+            all_indices.update([idx, j])
     print(f'analysis took {time.time()-cur_time} seconds')
+    return np.array(all_indices)
 
 
 def get_closest_function(j, matrix, metric):
@@ -287,7 +291,7 @@ def vectorize_folder(path, limit, vectorizer, output_folder, core_count, input_f
     files_list = get_filenames(path)
     functions_list, raw_list, gt_values = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count, input_folder)
     vectorizer, bow_matrix = vectorize_text(functions_list, vectorizer)
-    return vectorizer, functions_list, bow_matrix, raw_list, gt_values
+    return vectorizer, np.array(functions_list), bow_matrix, np.array(raw_list), np.array(gt_values)
 
 
 def main1(lists, params):
