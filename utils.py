@@ -79,7 +79,7 @@ def create_functions_list_from_filename(item):
     gt_values = []
     for (begin, end) in raw_ranges:
         possibble = gt.loc["\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'], 'nMethod_Line'].values
-        if begin in possibble:
+        if int(begin+1) in set(possibble):
             gt_values.append(1)
         else:
             gt_values.append(0)
