@@ -72,8 +72,10 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
 
     lnk = linkage(squareform(distances), params.clustering_method)
     # TODO:get list of filenames and locations!!
-    cluster = AgglomerativeClustering(n_clusters=5, affinity=params.metric, linkage=params.clustering_method)
-    results = cluster.fit_predict(distances)
+    cluster = AgglomerativeClustering(n_clusters=2, affinity=params.metric, linkage=params.clustering_method)
+    orig_results = cluster.fit_predict(distances)
+    results = orig_results
+    results = [1 if i in [0,1,2,3]  else 0 for i in range(len(orig_results))]
     colors = ['gray', 'brown', 'orange', 'olive', 'green', 'cyan', 'blue', 'purple', 'pink', 'red']
     
     link_cols = {}
@@ -85,7 +87,7 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
                 i -= (1+len(lnk))
             return i
         # c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[z1['leaves'].index(x)]] for x in i12)
-        c1, c2 = (colors[results[z1['leaves'].index(get_lowered_x(x))]] for x in i12)
+        c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[z1['leaves'].index(get_lowered_x(x))]] for x in i12)
         link_cols[i+1+len(lnk)] = c1 if c1 == c2 else dflt_col
         # link_cols[i+1+len(lnk)] = colors[results[z1['leaves'][i]]]
 
@@ -93,7 +95,8 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
         return link_cols[k]
     plt.close('all')
     plt.title(params.clustering_method)
-    z = dendrogram(lnk, labels=gt_values, color_threshold=None, link_color_func=get_color)
+    z = dendrogram(lnk, labels=list(range(len(gt_values))), color_threshold=None, link_color_func=get_color)
+    # z = dendrogram(lnk, labels=list(range(len(gt_values))))
     # z['leaves']
     plt.ylim(0, 5.5)
     plt.grid(axis='y')
