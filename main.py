@@ -69,7 +69,7 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
     # distances = np.array(distances)
     distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
     # fig = plt.figure(figsize=(25, 10))
-    plt.title(params.clustering_method)
+
     lnk = linkage(squareform(distances), params.clustering_method)
     # TODO:get list of filenames and locations!!
     cluster = AgglomerativeClustering(n_clusters=5, affinity=params.metric, linkage=params.clustering_method)
@@ -80,18 +80,25 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
     dflt_col = "#808080"   # Unclustered gray
     z1 = dendrogram(lnk, labels=gt_values, color_threshold=0)
     for i, i12 in enumerate(lnk[:, :2].astype(int)):
-        # c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[x]] for x in i12)
-        # link_cols[i+1+len(lnk)] = c1 if c1 == c2 else dflt_col
-        link_cols[i+1+len(lnk)] = colors[results[z1['leaves'][i]]]
+        def get_lowered_x(i):
+            while i > len(lnk):
+                i -= (1+len(lnk))
+            return i
+        # c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[z1['leaves'].index(x)]] for x in i12)
+        c1, c2 = (colors[results[z1['leaves'].index(get_lowered_x(x))]] for x in i12)
+        link_cols[i+1+len(lnk)] = c1 if c1 == c2 else dflt_col
+        # link_cols[i+1+len(lnk)] = colors[results[z1['leaves'][i]]]
 
     def get_color(k):
         return link_cols[k]
+    plt.close('all')
+    plt.title(params.clustering_method)
     z = dendrogram(lnk, labels=gt_values, color_threshold=None, link_color_func=get_color)
     # z['leaves']
     plt.ylim(0, 5.5)
     plt.grid(axis='y')
     plt.tight_layout()
-    plt.savefig(os.path.join(params.output_folder, 'dendogram.png'))
+    plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     plt.show()
     
     # plt.figure(figsize=(10, 7))
