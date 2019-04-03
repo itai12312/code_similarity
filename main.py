@@ -85,7 +85,7 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
                 i -= (1+len(lnk))
             return i
         # c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[z1['leaves'].index(x)]] for x in i12)
-        c1, c2 = (colors[results[z1['leaves'].index(get_lowered_x(x))]] for x in i12)
+        c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[z1['leaves'].index(get_lowered_x(x))]] for x in i12)
         link_cols[i+1+len(lnk)] = c1 if c1 == c2 else dflt_col
         # link_cols[i+1+len(lnk)] = colors[results[z1['leaves'][i]]]
 
