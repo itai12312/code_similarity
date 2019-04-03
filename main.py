@@ -21,6 +21,10 @@ from tqdm import tqdm, trange
 import itertools
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.decomposition import NMF, LatentDirichletAllocation
+
+sns.set()
 
 METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
                     'cosine': scipy.spatial.distance.cosine,
@@ -29,15 +33,31 @@ METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
 
 
 def main(args=None):
-    parser = get_parser()
-    params = parser.parse_args(args=args)
+    params = str_to_params(args)
     if params.profiler:
         profile(params)
     else:
         main_(params)
 
 
+def str_to_params(args):
+    parser = get_parser()
+    params = parser.parse_args(args=args)
+    return params
+
+
 def main_(params):
+    # can be called using dictobj.DictionaryObject({'metric': 'euclidean'}) or
+    # str_to_params('--output_folder result3 --metric euclidean --input_folder ../codes_short/ --files_limit 100 --max_features 2000')
+    bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer = get_all_needed_inputs(params)
+    # intersting_indices = analyze_functions(bow_matrix, METRIC_FUNCTIONS[params.metric], lists, raw_lists,
+    #                   vocab, params, gt_values)
+    intersting_indices = np.array(list(range(len(lists))))
+    analyze_functions2(bow_matrix[intersting_indices], lists[intersting_indices], raw_lists[intersting_indices],
+                       vocab, params, gt_values[intersting_indices], vectorizer)
+
+
+def get_all_needed_inputs(params):
     if not os.path.exists(params.output_folder):
         os.mkdir(params.output_folder)
     if params.cores_to_use == -1:
@@ -45,9 +65,10 @@ def main_(params):
     print(f'using {params.cores_to_use} cores')
     mypath = join(params.input_folder, 'tokenized1')
     vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[params.vectorizer]
-    vectorizer = vectorizer(max_features=params.max_features, ngram_range=(1,params.ngram_range))
+    vectorizer = vectorizer(max_df=0.95, min_df=2, max_features=params.max_features, ngram_range=(1, params.ngram_range))
     vectorizer1, lists, bow_matrix, raw_lists, gt_values = vectorize_folder(mypath, params.files_limit,
-                                                                            vectorizer, params.output_folder, params.cores_to_use,
+                                                                            vectorizer, params.output_folder,
+                                                                            params.cores_to_use,
                                                                             params.input_folder)
     if params.matix_form == '0-1':
         assert params.vectorizer == 'count'
@@ -55,16 +76,12 @@ def main_(params):
         # bow_matrix[bow_matrix == 0.] = 0
         # bow_matrix = bow_matrix.astype(int)
     elif params.matix_form == 'tf-idf':
-        bow_matrix = bow_matrix*1./bow_matrix.sum(axis=1)[:,None]
+        bow_matrix = bow_matrix * 1. / bow_matrix.sum(axis=1)[:, None]
     vocab = list(vectorizer1.vocabulary_.keys())
-    # intersting_indices = analyze_functions(bow_matrix, METRIC_FUNCTIONS[params.metric], lists, raw_lists,
-    #                   vocab, params, gt_values)
-    intersting_indices = np.array(list(range(len(lists))))
-    analyze_functions2(bow_matrix[intersting_indices], lists[intersting_indices], raw_lists[intersting_indices],
-                       vocab, params, gt_values[intersting_indices])
+    return bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer1
 
 
-def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
+def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values, vectorizer):
     # distances = [[metric(matrix[i].toarray(), matrix[j].toarray()) for i in range(matrix.shape[0])] for j in range(matrix.shape[0])]
     # distances = np.array(distances)
     distances = pdist(matrix.toarray(), metric=params.metric)
@@ -73,30 +90,22 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
 
     lnk = linkage(distances, params.clustering_method)
     # TODO:get list of filenames and locations!!
-    cluster = AgglomerativeClustering(n_clusters=7, affinity=params.metric, linkage=params.clustering_method)
-    orig_results = cluster.fit_predict(matrix.toarray())
-    results = orig_results
-    # results = [1 if i in [0,1,2,3]  else 0 for i in range(len(orig_results))]
-    colors = ['gray', 'blue', 'orange', 'olive', 'green', 'cyan', 'brown', 'purple', 'pink', 'red']
-    fl = fcluster(lnk, 7,criterion='maxclust')
+    cluster = AgglomerativeClustering(n_clusters=params.n_clusters, affinity=params.metric, linkage=params.clustering_method)
+    results = cluster.fit_predict(matrix.toarray())
+    colors = ['blue', 'orange', 'olive', 'green', 'cyan', 'brown', 'purple', 'pink', 'red']
+    # fl = fcluster(lnk, params.n_clusters,criterion='maxclust')
+    # assert fl == results
     link_cols = {}
     dflt_col = "#808080"   # Unclustered gray
-    # z1 = dendrogram(lnk, labels=gt_values, color_threshold=None)
     for i, i12 in enumerate(lnk[:, :2].astype(int)):
-        def get_lowered_x(i):
-            while i > len(lnk):
-                i -= (1+len(lnk))
-            return i
-        # c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[z1['leaves'].index(x)]] for x in i12)
-        c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[get_lowered_x(x)]] for x in i12)
+        c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[x]] for x in i12)
         link_cols[i+1+len(lnk)] = c1 if c1 == c2 else dflt_col
-        # link_cols[i+1+len(lnk)] = colors[results[z1['leaves'][i]]]
 
     def get_color(k):
         return link_cols[k]
     plt.close('all')
-    plt.title(params.clustering_method)
-    z = dendrogram(lnk, labels=list(range(len(gt_values))), color_threshold=None, link_color_func=get_color)
+    plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
+    z = dendrogram(lnk, labels=gt_values, color_threshold=None, link_color_func=get_color)
     # z = dendrogram(lnk, labels=list(range(len(gt_values))))
     # z['leaves']
     plt.ylim(0, 5.5)
@@ -104,10 +113,32 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
     plt.tight_layout()
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     plt.show()
-    
+    # sns.clustermap(matrix.toarray())
+    sns.clustermap(matrix.toarray(), metric=params.metric, method=params.clustering_method, cmap="Blues", standard_scale=1)
+    plt.savefig(os.path.join(params.output_folder, 'dendogram_with_heatmap.svg'))
+    plt.show()
+    # df = pd.DataFrame.from_dict({'content': raw_lists, 'target': gt_values}, orient='columns')
+    # data = df.content.values.tolist()
+    assert params.vectorizer == 'count'
+
+    lda = LatentDirichletAllocation(n_topics=params.n_topics, max_iter=5, learning_method='online', learning_offset=50.,random_state=0).fit(matrix)
+
+    no_top_words = 10
+    # vectorizer.get_feature_names() vs vocab?
+    # tfi    tfidf = matrix.toarray() * 1. / matrix.toarray().sum(axis=1)[:, None]
+    #     nmf = NMF(n_components=params.n_topics, random_state=1, alpha=.1, l1_ratio=.5, init='nndsvd').fit(tfidf)df = matrix.toarray() * 1. / matrix.toarray().sum(axis=1)[:, None]
+    # nmf = NMF(n_components=params.n_topics, random_state=1, alpha=.1, l1_ratio=.5, init='nndsvd').fit(tfidf)
+    # display_topics(nmf, vectorizer.get_feature_names(), no_top_words)
+
+    display_topics(lda, vectorizer.get_feature_names(), no_top_words)
+
     # plt.figure(figsize=(10, 7))
     # plt.scatter(data[:,0], data[:,1], c=cluster.labels_, cmap='rainbow')
     pass
+def display_topics(model, feature_names, no_top_words):
+    for topic_idx, topic in enumerate(model.components_):
+        print("Topic %d: {}" .format(topic_idx))
+        print(" ".join([feature_names[i] for i in topic.argsort()[:-no_top_words - 1:-1]]))
 
 
 def analyze_functions(matrix, metric, lists, raw_lists, vocab, params, gt_values):
@@ -258,6 +289,8 @@ def get_parser():
 
     parser.add_argument('--num_features', action="store", dest="num_features", type=int, default=300)
     parser.add_argument('--ngram_range', action="store", dest="ngram_range", type=int, default=1)
+    parser.add_argument('--n_clusters', action="store", dest="n_clusters", type=int, default=7)
+    parser.add_argument('--n_topics', action="store", dest="n_topics", type=int, default=20)
     parser.add_argument('--top_similar_functions', action="store", dest="top_similar_functions", type=int, default=10)
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
     parser.add_argument('--num_workers', action="store", dest="num_workers", type=int, default=4)

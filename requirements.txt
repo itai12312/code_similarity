@@ -5,6 +5,5 @@ pathos
 gensim
 seaborn
 matplotlib
-numba
 parse
-graphviz
+dictobj
