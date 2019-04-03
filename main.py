@@ -5,7 +5,7 @@ import itertools
 import pandas as pd
 from gensim.models import word2vec
 import scipy
-from scipy.spatial.distance import squareform
+from scipy.spatial.distance import squareform, pdist
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -19,7 +19,7 @@ from utils import tsnescatterplot, create_functions_list_from_filename
 from tqdm import tqdm, trange
 # tqdm.auto
 import itertools
-from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import matplotlib.pyplot as plt
 
 METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
@@ -67,25 +67,28 @@ def main_(params):
 def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
     # distances = [[metric(matrix[i].toarray(), matrix[j].toarray()) for i in range(matrix.shape[0])] for j in range(matrix.shape[0])]
     # distances = np.array(distances)
-    distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
+    distances = pdist(matrix.toarray(), metric=params.metric)
+    # distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
     # fig = plt.figure(figsize=(25, 10))
 
-    lnk = linkage(squareform(distances), params.clustering_method)
+    lnk = linkage(distances, params.clustering_method)
     # TODO:get list of filenames and locations!!
-    cluster = AgglomerativeClustering(n_clusters=5, affinity=params.metric, linkage=params.clustering_method)
-    results = cluster.fit_predict(distances)
-    colors = ['gray', 'brown', 'orange', 'olive', 'green', 'cyan', 'blue', 'purple', 'pink', 'red']
-    
+    cluster = AgglomerativeClustering(n_clusters=7, affinity=params.metric, linkage=params.clustering_method)
+    orig_results = cluster.fit_predict(matrix.toarray())
+    results = orig_results
+    # results = [1 if i in [0,1,2,3]  else 0 for i in range(len(orig_results))]
+    colors = ['gray', 'blue', 'orange', 'olive', 'green', 'cyan', 'brown', 'purple', 'pink', 'red']
+    fl = fcluster(lnk, 7,criterion='maxclust')
     link_cols = {}
     dflt_col = "#808080"   # Unclustered gray
-    z1 = dendrogram(lnk, labels=gt_values, color_threshold=0)
+    # z1 = dendrogram(lnk, labels=gt_values, color_threshold=None)
     for i, i12 in enumerate(lnk[:, :2].astype(int)):
         def get_lowered_x(i):
             while i > len(lnk):
                 i -= (1+len(lnk))
             return i
         # c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[z1['leaves'].index(x)]] for x in i12)
-        c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[z1['leaves'].index(get_lowered_x(x))]] for x in i12)
+        c1, c2 = (link_cols[x] if x > len(lnk) else colors[results[get_lowered_x(x)]] for x in i12)
         link_cols[i+1+len(lnk)] = c1 if c1 == c2 else dflt_col
         # link_cols[i+1+len(lnk)] = colors[results[z1['leaves'][i]]]
 
@@ -93,7 +96,8 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values):
         return link_cols[k]
     plt.close('all')
     plt.title(params.clustering_method)
-    z = dendrogram(lnk, labels=gt_values, color_threshold=None, link_color_func=get_color)
+    z = dendrogram(lnk, labels=list(range(len(gt_values))), color_threshold=None, link_color_func=get_color)
+    # z = dendrogram(lnk, labels=list(range(len(gt_values))))
     # z['leaves']
     plt.ylim(0, 5.5)
     plt.grid(axis='y')
