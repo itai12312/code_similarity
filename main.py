@@ -36,6 +36,8 @@ METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
 
 def main(args=None):
     params = str_to_params(args)
+    if not os.path.exists(params.output_folder):
+        os.mkdir(params.output_folder)
     with open(os.path.join(params.output_folder, 'args.txt'), 'w+') as f:
         f.write(' '.join(args) if args is not None else ' '.join(sys.argv[1:]))
     if params.profiler:
@@ -120,6 +122,9 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
     with open(os.path.join(params.output_folder, 'dendogram_list.txt'), 'w+') as f:
         f.write(f'order of leaves is {z["leaves"]}\n')
         f.write(f'names of files is {filenames}\n')
+        for i in range(len(lists)):
+            f.write(f'program # {i}\n')
+            f.write(f"{raw_lists[i]}\n")
     plt.ylim(0, 5.5)
     plt.grid(axis='y')
     plt.tight_layout()
