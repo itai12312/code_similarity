@@ -15,15 +15,17 @@ from os.path import isfile, join
 import pathos.multiprocessing as multiprocessing
 import numpy as np
 import sklearn
-from utils import tsnescatterplot, create_functions_list_from_filename
+from utils import tsnescatterplot, create_functions_list_from_filename, plot_confusion_matrix_
 from tqdm import tqdm, trange
 # tqdm.auto
+import sys
 import itertools
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.decomposition import NMF, LatentDirichletAllocation
-
+from sklearn.ensemble.forest import RandomForestClassifier
+from sklearn.metrics import confusion_matrix
 sns.set()
 
 METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
@@ -34,6 +36,8 @@ METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
 
 def main(args=None):
     params = str_to_params(args)
+    with open(os.path.join(params.output_folder, 'args.txt'), 'w+') as f:
+        f.write(' '.join(args) if args is not None else ' '.join(sys.argv[1:]))
     if params.profiler:
         profile(params)
     else:
@@ -49,12 +53,12 @@ def str_to_params(args):
 def main_(params):
     # can be called using dictobj.DictionaryObject({'metric': 'euclidean'}) or
     # str_to_params('--output_folder result3 --metric euclidean --input_folder ../codes_short/ --files_limit 100 --max_features 2000')
-    bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer = get_all_needed_inputs(params)
+    bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer, filenames_list = get_all_needed_inputs(params)
     # intersting_indices = analyze_functions(bow_matrix, METRIC_FUNCTIONS[params.metric], lists, raw_lists,
     #                   vocab, params, gt_values)
     intersting_indices = np.array(list(range(len(lists))))
     analyze_functions2(bow_matrix[intersting_indices], lists[intersting_indices], raw_lists[intersting_indices],
-                       vocab, params, gt_values[intersting_indices], vectorizer)
+                       vocab, params, gt_values[intersting_indices], vectorizer, filenames_list[intersting_indices])
 
 
 def get_all_needed_inputs(params):
@@ -66,32 +70,38 @@ def get_all_needed_inputs(params):
     mypath = join(params.input_folder, 'tokenized1')
     vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[params.vectorizer]
     vectorizer = vectorizer(max_df=0.95, min_df=2, max_features=params.max_features, ngram_range=(1, params.ngram_range))
-    vectorizer1, lists, bow_matrix, raw_lists, gt_values = vectorize_folder(mypath, params.files_limit,
+    vectorizer1, lists, bow_matrix, raw_lists, gt_values, filenames_list = vectorize_folder(mypath, params.files_limit,
                                                                             vectorizer, params.output_folder,
                                                                             params.cores_to_use,
                                                                             params.input_folder)
-    if params.matix_form == '0-1':
-        assert params.vectorizer == 'count'
-        bow_matrix[bow_matrix >= 1.] = 1
-        # bow_matrix[bow_matrix == 0.] = 0
-        # bow_matrix = bow_matrix.astype(int)
-    elif params.matix_form == 'tf-idf':
-        bow_matrix = bow_matrix * 1. / bow_matrix.sum(axis=1)[:, None]
+    # if params.matix_form == '0-1':
+    #     assert params.vectorizer == 'count'
+    #     bow_matrix[bow_matrix >= 1.] = 1
+    #     # bow_matrix[bow_matrix == 0.] = 0
+    #     # bow_matrix = bow_matrix.astype(int)
+    # elif params.matix_form == 'tf-idf':
+    #     bow_matrix = bow_matrix * 1. / bow_matrix.sum(axis=1)[:, None]
     vocab = list(vectorizer1.vocabulary_.keys())
-    return bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer1
+    return bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer1, filenames_list
 
 
-def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values, vectorizer):
+def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vectorizer, filenames):
     # distances = [[metric(matrix[i].toarray(), matrix[j].toarray()) for i in range(matrix.shape[0])] for j in range(matrix.shape[0])]
     # distances = np.array(distances)
-    distances = pdist(matrix.toarray(), metric=params.metric)
+    if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
+        matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
+    elif params.vectorizer == 'count' and params.matrix_form == '0-1':
+        matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
+        matrix[matrix >= 1.] = 1
+    # matrix = matrix.toarray()
+    distances = pdist(matrix, metric=params.metric)
     # distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
     # fig = plt.figure(figsize=(25, 10))
 
     lnk = linkage(distances, params.clustering_method)
     # TODO:get list of filenames and locations!!
     cluster = AgglomerativeClustering(n_clusters=params.n_clusters, affinity=params.metric, linkage=params.clustering_method)
-    results = cluster.fit_predict(matrix.toarray())
+    results = cluster.fit_predict(matrix)
     colors = ['blue', 'orange', 'olive', 'green', 'cyan', 'brown', 'purple', 'pink', 'red']
     # fl = fcluster(lnk, params.n_clusters,criterion='maxclust')
     # assert fl == results
@@ -107,38 +117,45 @@ def analyze_functions2(matrix, lists, raw_lists, vocab, params, gt_values, vecto
     plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
     z = dendrogram(lnk, labels=gt_values, color_threshold=None, link_color_func=get_color)
     # z = dendrogram(lnk, labels=list(range(len(gt_values))))
-    # z['leaves']
+    with open(os.path.join(params.output_folder, 'dendogram_list.txt'), 'w+') as f:
+        f.write(f'order of leaves is {z["leaves"]}\n')
+        f.write(f'names of files is {filenames}\n')
     plt.ylim(0, 5.5)
     plt.grid(axis='y')
     plt.tight_layout()
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     plt.show()
     # sns.clustermap(matrix.toarray())
-    sns.clustermap(matrix.toarray(), metric=params.metric, method=params.clustering_method, cmap="Blues", standard_scale=1)
+    sns.clustermap(matrix, metric=params.metric, method=params.clustering_method, cmap="Blues", standard_scale=1)
+    plt.tight_layout()
     plt.savefig(os.path.join(params.output_folder, 'dendogram_with_heatmap.svg'))
     plt.show()
     # df = pd.DataFrame.from_dict({'content': raw_lists, 'target': gt_values}, orient='columns')
     # data = df.content.values.tolist()
     assert params.vectorizer == 'count'
 
-    lda = LatentDirichletAllocation(n_topics=params.n_topics, max_iter=5, learning_method='online', learning_offset=50.,random_state=0).fit(matrix)
+    lda = LatentDirichletAllocation(n_topics=params.n_topics, max_iter=5, learning_method='online', learning_offset=50.,random_state=params.seed, n_jobs=-1).fit(matrix1)
 
-    no_top_words = 10
     # vectorizer.get_feature_names() vs vocab?
-    # tfi    tfidf = matrix.toarray() * 1. / matrix.toarray().sum(axis=1)[:, None]
-    #     nmf = NMF(n_components=params.n_topics, random_state=1, alpha=.1, l1_ratio=.5, init='nndsvd').fit(tfidf)df = matrix.toarray() * 1. / matrix.toarray().sum(axis=1)[:, None]
+    # tfidf = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
     # nmf = NMF(n_components=params.n_topics, random_state=1, alpha=.1, l1_ratio=.5, init='nndsvd').fit(tfidf)
     # display_topics(nmf, vectorizer.get_feature_names(), no_top_words)
 
-    display_topics(lda, vectorizer.get_feature_names(), no_top_words)
-
+    display_topics(lda, vectorizer.get_feature_names(), params)
+    clf = {'randomforest': RandomForestClassifier(n_estimators=100, random_state=params.seed)}[params.classifier]
+    clf.fit(matrix, gt_values)
+    pred = clf.predict(matrix)
+    confusion = confusion_matrix(gt_values, pred)
+    plot_confusion_matrix_(confusion, params.output_folder, show_amount=True, classes=['secure', 'not secure'])
     # plt.figure(figsize=(10, 7))
     # plt.scatter(data[:,0], data[:,1], c=cluster.labels_, cmap='rainbow')
     pass
-def display_topics(model, feature_names, no_top_words):
-    for topic_idx, topic in enumerate(model.components_):
-        print("Topic %d: {}" .format(topic_idx))
-        print(" ".join([feature_names[i] for i in topic.argsort()[:-no_top_words - 1:-1]]))
+def display_topics(model, feature_names, params):
+    with open(os.path.join(params.output_folder, 'topic_modelling.txt'), 'w+') as f:
+        for topic_idx, topic in enumerate(model.components_):
+            f.write("Topic %d: {}\n" .format(topic_idx))
+            f.write("".join([f'{feature_names[i]} {topic[i]}\n' for i in topic.argsort()[:-params.no_top_words - 1:-1]]))
+            f.write("\n")
 
 
 def analyze_functions(matrix, metric, lists, raw_lists, vocab, params, gt_values):
@@ -281,7 +298,7 @@ def get_parser():
     parser.add_argument('--metric', action="store", dest="metric", help="jaccard or cosine", default="cosine")
     parser.add_argument('--vectorizer', action="store", dest="vectorizer", help="count or tfidf", default="tfidf")
     parser.add_argument('--clustering_method', action="store", dest="clustering_method", help="single complete average ward weighted centroid median", default="average")
-    parser.add_argument('--matix_form', action="store", dest="matix_form", help="0-1 or tf-idf or none", default="none")
+    parser.add_argument('--matrix_form', action="store", dest="matrix_form", help="0-1 or tf-idf or none", default="none")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=100)
     parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
@@ -296,6 +313,8 @@ def get_parser():
     parser.add_argument('--num_workers', action="store", dest="num_workers", type=int, default=4)
     parser.add_argument('--cores_to_use', action="store", dest="cores_to_use", type=int, default=1)
     parser.add_argument('--context', action="store", dest="context", type=int, default=10)
+    parser.add_argument('--seed', action="store", dest="seed", type=int, default=0)
+    parser.add_argument('--no_top_words', action="store", dest="no_top_words", type=int, default=10)
     parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
     return parser
 
@@ -304,30 +323,32 @@ def create_functions_list_from_filenames_list(files_list, output_folder, core_co
     functions_list = []
     raw_list = []
     gt_values = []
+    filenames_list = []
     sizecounter = len(files_list)
     with open(join(output_folder, 'error_parsing.txt'), 'w+') as f:
         gt = pd.read_csv(os.path.join(input_folder, 'results1.csv'), engine='python', encoding='utf8', error_bad_lines=False)
         with tqdm(total=sizecounter, unit='files') as pbar:
             if core_count > 1:
                 with multiprocessing.Pool(processes=core_count) as p:
-                    for i, (temp, temp_raw, temp_gt, code, filename) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt) for file_name in files_list], chunksize=10))):
-                        functions_list, gt_values, raw_list = inner_loop(code, f, filename, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw)
+                    for i, (temp, temp_raw, temp_gt, code, filenames) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt) for file_name in files_list], chunksize=10))):
+                        functions_list, gt_values, raw_list, filenames_list = inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw, filenames_list)
             else:
                 for i, filename in enumerate(files_list):
-                    temp, temp_raw, temp_gt, code, filename = create_functions_list_from_filename((filename, gt))
-                    functions_list, gt_values, raw_list = inner_loop(code, f, filename, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw)
-    return functions_list, raw_list, gt_values
+                    temp, temp_raw, temp_gt, code, filenames = create_functions_list_from_filename((filename, gt))
+                    functions_list, gt_values, raw_list, filenames_list = inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw, filenames_list)
+    return functions_list, raw_list, gt_values, filenames_list
 
 
-def inner_loop(code, f, filename, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw):
+def inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw, filenames_list):
     functions_list += temp
     raw_list += temp_raw
     gt_values += temp_gt
+    filenames_list += filenames
     if code != "":
-        f.write(f'{filename}: {code}\n')
+        f.write(f'{filenames[0]}: {code}\n')
     # pbar.update(sizecounter[file_idx])
     pbar.update()
-    return functions_list, gt_values, raw_list
+    return functions_list, gt_values, raw_list, filenames_list
 
 
 def vectorize_text(text, vectorizer):
@@ -344,9 +365,9 @@ def get_filenames(mypath):
 
 def vectorize_folder(path, limit, vectorizer, output_folder, core_count, input_folder):
     files_list = get_filenames(path)
-    functions_list, raw_list, gt_values = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count, input_folder)
+    functions_list, raw_list, gt_values, filenames_list = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count, input_folder)
     vectorizer, bow_matrix = vectorize_text(functions_list, vectorizer)
-    return vectorizer, np.array(functions_list), bow_matrix, np.array(raw_list), np.array(gt_values)
+    return vectorizer, np.array(functions_list), bow_matrix, np.array(raw_list), np.array(gt_values), np.array(filenames_list)
 
 
 def main1(lists, params):

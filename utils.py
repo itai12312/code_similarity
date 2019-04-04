@@ -77,14 +77,16 @@ def create_functions_list_from_filename(item):
 
     rootpath, realfilename = parse.parse('{}/tokenized1/{}', filename)
     gt_values = []
+    filenames = []
     for (begin, end) in raw_ranges:
         possibble = gt.loc["\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'], 'nMethod_Line'].values
         if int(begin+1) in set(possibble):
             gt_values.append(1)
         else:
             gt_values.append(0)
+        filenames.append(filename)
     # functions_raw = ['' for i in range(len(functions_list))]
-    return functions_list, functions_raw, gt_values, "", filename
+    return functions_list, functions_raw, gt_values, "", filenames
 
 
 def main2(params):
@@ -255,3 +257,61 @@ def fix_blocks_and_methods(input_df):
 
     # Remove helper column
     return(df.drop(columns=[4]))
+
+
+
+def plot_confusion_matrix_(confusion, path, log_scale=False, show_amount=False, classes=None):
+    plt.close('all')
+    results = confusion.astype(int)
+    if log_scale:
+        results = np.log10(results + 1)
+    plt.imshow(results, interpolation='nearest')
+    plt.xlabel('gt')
+    plt.ylabel('pred')
+    plt.title('in {} scale'.format({True: 'log', False: 'regular'}[log_scale]))
+    plt.colorbar()
+    if classes is not None:
+        tick_marks = np.arange(len(classes))
+        if show_amount:
+            classes_order = list(range(len(classes)))
+            for (j, i) in itertools.product(classes_order, classes_order):
+                plt.text(i, j, results[j, i], ha='center', va='center', color='blue')
+        plt.xticks(tick_marks, classes, rotation=90)
+        plt.yticks(tick_marks, classes)
+    plt.tight_layout()
+    plt.savefig(os.path.join(path, 'confusion.svg'))
+    # plt.close('all')
+    plt.show()
+    results = _calculate_per_class_stats(classes, confusion)
+    _dump_per_class_stats(path, results)
+
+
+def _dump_per_class_stats(folder_path, results):
+    columns = ['class_id', 'class_name', 'recall', 'precision', 'f1', 'most-mistaken recall', 'most-mistaken precision']
+    data = pd.DataFrame(data=np.array(results), columns=columns)
+    data = data.sort_values(by=['recall'])
+    data.to_csv('{}.csv'.format(os.path.join(folder_path, 'per_class_report_path')), float_format='%.4f')
+
+
+def get_most_common_mistaken(arr, class_id, classes):
+    results = np.argsort(-arr, axis=0)
+    idx = list(set(results[:2])-set([class_id]))[0]
+    val = arr[idx] / sum(arr) if sum(arr) > 0 else 0
+    class_name = classes[idx] if classes is not None else ''
+    return '{}_{:.4f}'.format(class_name, val)
+
+
+def _calculate_per_class_stats(classes, confusion):
+    results = []
+    for class_id in range(len(classes)):
+        class_name = classes[class_id] if classes is not None else ''
+        gt = sum(confusion[class_id, :])
+        pred = sum(confusion[:, class_id])
+        if gt > 0:
+            recall = confusion[class_id, class_id] * 1. / gt if gt > 0 else 0
+            precision = confusion[class_id, class_id] * 1. / pred if pred > 0 else 0
+            f1 = 2 * recall * precision / (recall + precision) if recall + precision > 0 else 0
+            results.append([class_id, class_name, recall, precision, f1,
+                            get_most_common_mistaken(confusion[:, class_id], class_id, classes),  # for precision
+                            get_most_common_mistaken(confusion[class_id, :], class_id, classes)])  # for recall
+    return results
