@@ -124,6 +124,9 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
     with open(os.path.join(params.output_folder, 'dendogram_list.txt'), 'w+') as f:
         f.write(f'order of leaves is {z["leaves"]}\n')
         f.write(f'names of files is {filenames}\n')
+        for i in range(len(lists)):
+            f.write(f'program # {i}\n')
+            f.write(f"{raw_lists[i]}\n")
     plt.ylim(0, 5.5)
     plt.grid(axis='y')
     plt.tight_layout()
