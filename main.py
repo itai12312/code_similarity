@@ -26,6 +26,7 @@ import seaborn as sns
 from sklearn.decomposition import NMF, LatentDirichletAllocation
 from sklearn.ensemble.forest import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
+import copy
 sns.set()
 
 METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
@@ -36,8 +37,11 @@ METRIC_FUNCTIONS = {'jaccard': scipy.spatial.distance.jaccard,
 
 def main(args=None):
     params = str_to_params(args)
+    if not os.path.exists(params.output_folder):
+        os.mkdir(params.output_folder)
     with open(os.path.join(params.output_folder, 'args.txt'), 'w+') as f:
         f.write(' '.join(args) if args is not None else ' '.join(sys.argv[1:]))
+        f.write('\nparams are:{}\n'.format(params))
     if params.profiler:
         profile(params)
     else:
@@ -91,7 +95,7 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
     if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
         matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
     elif params.vectorizer == 'count' and params.matrix_form == '0-1':
-        matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
+        matrix = copy.deepcopy(matrix1)
         matrix[matrix >= 1.] = 1
     # matrix = matrix.toarray()
     distances = pdist(matrix, metric=params.metric)
@@ -127,14 +131,14 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
     plt.show()
     # sns.clustermap(matrix.toarray())
     sns.clustermap(matrix, metric=params.metric, method=params.clustering_method, cmap="Blues", standard_scale=1)
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(os.path.join(params.output_folder, 'dendogram_with_heatmap.svg'))
     plt.show()
     # df = pd.DataFrame.from_dict({'content': raw_lists, 'target': gt_values}, orient='columns')
     # data = df.content.values.tolist()
     assert params.vectorizer == 'count'
 
-    lda = LatentDirichletAllocation(n_topics=params.n_topics, max_iter=5, learning_method='online', learning_offset=50.,random_state=params.seed, n_jobs=-1).fit(matrix1)
+    lda = LatentDirichletAllocation(n_components=params.n_topics, max_iter=5, learning_method='online', learning_offset=50.,random_state=params.seed, n_jobs=-1).fit(matrix1)
 
     # vectorizer.get_feature_names() vs vocab?
     # tfidf = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
