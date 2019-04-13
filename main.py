@@ -117,41 +117,46 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
         return link_cols[k]
     plt.close('all')
     plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
-    z = dendrogram(lnk, labels=gt_values, color_threshold=None, link_color_func=get_color)
+    z = dendrogram(lnk, labels=gt_values, color_threshold=0.15) # , link_color_func=get_color)
     # z = dendrogram(lnk, labels=list(range(len(gt_values))))
+    t = 0
+    for i in range(len(lists)):
+        print(f't {t} with colors:')
+        idi = z['leaves'].index(i)
+        if idi != 190:
+            c = z['color_list'][idi]
+            print(f'{i} {c}')
     with open(os.path.join(params.output_folder, 'dendogram_list.txt'), 'w+') as f:
         f.write(f'order of leaves is {z["leaves"]}\n')
         f.write(f'names of files is {filenames}\n')
         for i in range(len(lists)):
-            f.write(f'program # {i}\n')
+            f.write(f'program # {i}\n with gt {gt_values[i]}')
             f.write(f"{raw_lists[i]}\n")
-    plt.ylim(0, 5.5)
+    # plt.ylim(0, 5.5)
     plt.grid(axis='y')
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     plt.show()
     # sns.clustermap(matrix.toarray())
-    sns.clustermap(matrix, metric=params.metric, method=params.clustering_method, cmap="Blues", standard_scale=1)
-    plt.tight_layout()
-    plt.savefig(os.path.join(params.output_folder, 'dendogram_with_heatmap.svg'))
-    plt.show()
+    # sns.clustermap(matrix, metric=params.metric, method=params.clustering_method, cmap="Blues", standard_scale=1)
+    # plt.tight_layout()
+    # plt.savefig(os.path.join(params.output_folder, 'dendogram_with_heatmap.svg'))
+    # plt.show()
     # df = pd.DataFrame.from_dict({'content': raw_lists, 'target': gt_values}, orient='columns')
     # data = df.content.values.tolist()
     assert params.vectorizer == 'count'
-
-    lda = LatentDirichletAllocation(n_topics=params.n_topics, max_iter=5, learning_method='online', learning_offset=50.,random_state=params.seed, n_jobs=-1).fit(matrix1)
-
-    # vectorizer.get_feature_names() vs vocab?
-    # tfidf = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
-    # nmf = NMF(n_components=params.n_topics, random_state=1, alpha=.1, l1_ratio=.5, init='nndsvd').fit(tfidf)
-    # display_topics(nmf, vectorizer.get_feature_names(), no_top_words)
-
-    display_topics(lda, vectorizer.get_feature_names(), params)
-    clf = {'randomforest': RandomForestClassifier(n_estimators=100, random_state=params.seed)}[params.classifier]
-    clf.fit(matrix, gt_values)
-    pred = clf.predict(matrix)
-    confusion = confusion_matrix(gt_values, pred)
-    plot_confusion_matrix_(confusion, params.output_folder, show_amount=True, classes=['secure', 'not secure'])
+    # lda = LatentDirichletAllocation(n_topics=params.n_topics, max_iter=5, learning_method='online', learning_offset=50.,random_state=params.seed, n_jobs=-1).fit(matrix1)
+    # # vectorizer.get_feature_names() vs vocab?
+    # # tfidf = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
+    # # nmf = NMF(n_components=params.n_topics, random_state=1, alpha=.1, l1_ratio=.5, init='nndsvd').fit(tfidf)
+    # # display_topics(nmf, vectorizer.get_feature_names(), no_top_words)
+    #
+    # display_topics(lda, vectorizer.get_feature_names(), params)
+    # clf = {'randomforest': RandomForestClassifier(n_estimators=100, random_state=params.seed)}[params.classifier]
+    # clf.fit(matrix, gt_values)
+    # pred = clf.predict(matrix)
+    # confusion = confusion_matrix(gt_values, pred)
+    # plot_confusion_matrix_(confusion, params.output_folder, show_amount=True, classes=['secure', 'not secure'])
     # plt.figure(figsize=(10, 7))
     # plt.scatter(data[:,0], data[:,1], c=cluster.labels_, cmap='rainbow')
     pass
@@ -392,6 +397,7 @@ def main1(lists, params):
     # word_to_vec_plt(lists, ConstantAray(0, len(lists)), embedding_model, params.output_folder, model)
 
 
+# --n_clusters 7 --matrix_form tfidf --vectorizer count --metric euclidean --input_folder ../codes_short/ --files_limit 100 --output_folder result5 --max_features 2000
 if __name__ == "__main__":
     main()
 
