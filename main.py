@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import time
 import argparse
 import traceback
@@ -96,10 +98,10 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
         matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
         matrix[matrix >= 1.] = 1
     # matrix = matrix.toarray()
-    distances = pdist(matrix, metric=params.metric)
+
     # distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
     # fig = plt.figure(figsize=(25, 10))
-
+    distances = pdist(matrix, metric=params.metric)
     lnk = linkage(distances, params.clustering_method)
     # TODO:get list of filenames and locations!!
     cluster = AgglomerativeClustering(n_clusters=params.n_clusters, affinity=params.metric, linkage=params.clustering_method)
@@ -117,26 +119,63 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
         return link_cols[k]
     plt.close('all')
     plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
-    z = dendrogram(lnk, labels=gt_values, color_threshold=0.15) # , link_color_func=get_color)
+    z = dendrogram(lnk, labels=gt_values, color_threshold=0.17) # , link_color_func=get_color)
     # z = dendrogram(lnk, labels=list(range(len(gt_values))))
     t = 0
-    for i in range(len(lists)):
-        print(f't {t} with colors:')
-        idi = z['leaves'].index(i)
-        if idi != 190:
-            c = z['color_list'][idi]
-            print(f'{i} {c}')
+    # for i in range(20):
+    #     # print(f'leafe {i} with colors:')
+    #     idi = i # z['leaves'].index(i)
+    #     if idi != 190:
+    #         c = z['color_list'][i]
+    #         print(f'{i} {c} {idi}')
+    cluster_idxs = defaultdict(list)
+    for c, pi in zip(z['color_list'], z['icoord']):
+        for leg in pi[1:3]:
+            i = (leg - 5.0) / 10.0
+            if abs(i - int(i)) < 1e-5:
+                cluster_idxs[c].append(int(i))
+    intersting_clusters = []
     with open(os.path.join(params.output_folder, 'dendogram_list.txt'), 'w+') as f:
         f.write(f'order of leaves is {z["leaves"]}\n')
         f.write(f'names of files is {filenames}\n')
-        for i in range(len(lists)):
-            f.write(f'program # {i}\n with gt {gt_values[i]}')
-            f.write(f"{raw_lists[i]}\n")
-    # plt.ylim(0, 5.5)
+        prev = -1
+        for i in range(len(lists)-1):
+            if i==0 or z['color_list'][i] != z['color_list'][i-1]:
+                f.write(f'finished new cluster with len {i-prev}\n')
+                if i-prev > 18:
+                    f.write('***\n')
+                    intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
+                prev=i
+            prog_id = z["leaves"][i]
+            f.write(f'program # {prog_id}\n with gt {gt_values[prog_id]}\n')
+            f.write(f"{raw_lists[prog_id]}\n")
+        f.write(f'finished new cluster with len {i-prev}\n')
+        if i-prev > 18:
+            intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
+            f.write('***\n')
+
+# plt.ylim(0, 5.5)
     plt.grid(axis='y')
     # plt.tight_layout()
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     plt.show()
+    for cluster_id, cluster in enumerate(intersting_clusters):
+        distances1 = pdist(matrix[cluster], metric=params.metric)
+        lnk1 = linkage(distances1, params.clustering_method)
+        plt.close('all')
+        plt.title(f'cluster clustering method {params.clustering_method}, metric {params.metric}')
+        z1 = dendrogram(lnk1, labels=gt_values[cluster], color_threshold=0.17)
+        plt.grid(axis='y')
+        plt.savefig(os.path.join(params.output_folder, f'dendogram_{cluster_id}.svg'))
+        plt.show()
+        from sklearn.naive_bayes import MultinomialNB
+        from sklearn.model_selection import train_test_split
+        clf = MultinomialNB()
+        x_train, x_test, y_train, y_test = train_test_split(matrix[cluster_id], gt_values[cluster])
+        clf.fit(x_train, y_train)
+        res = clf.predict(x_test)
+        acc = sum(res==y_test)/len(res)
+        print('acc for cluster is')
     # sns.clustermap(matrix.toarray())
     # sns.clustermap(matrix, metric=params.metric, method=params.clustering_method, cmap="Blues", standard_scale=1)
     # plt.tight_layout()
