@@ -160,22 +160,24 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     plt.show()
     for cluster_id, cluster in enumerate(intersting_clusters):
-        distances1 = pdist(matrix[cluster], metric=params.metric)
-        lnk1 = linkage(distances1, params.clustering_method)
+        clustering_type = 'average'
+        clustering_metric = params.metric
+        distances1 = pdist(matrix[cluster], metric=clustering_metric)
+        lnk1 = linkage(distances1, clustering_type)
         plt.close('all')
-        plt.title(f'cluster clustering method {params.clustering_method}, metric {params.metric}')
+        plt.title(f'cluster clustering method {clustering_type}, metric {clustering_metric}')
         z1 = dendrogram(lnk1, labels=gt_values[cluster], color_threshold=0.17)
         plt.grid(axis='y')
-        plt.savefig(os.path.join(params.output_folder, f'dendogram_{cluster_id}.svg'))
+        plt.savefig(os.path.join(params.output_folder, f'dendogram_{cluster_id}_{clustering_metric}_{clustering_type}.svg'))
         plt.show()
         from sklearn.naive_bayes import MultinomialNB
         from sklearn.model_selection import train_test_split
         clf = MultinomialNB()
-        x_train, x_test, y_train, y_test = train_test_split(matrix[cluster_id], gt_values[cluster])
+        x_train, x_test, y_train, y_test = train_test_split(matrix[cluster], gt_values[cluster])
         clf.fit(x_train, y_train)
         res = clf.predict(x_test)
         acc = sum(res==y_test)/len(res)
-        print('acc for cluster is')
+        print('acc for cluster is {}'.format(acc))
     # sns.clustermap(matrix.toarray())
     # sns.clustermap(matrix, metric=params.metric, method=params.clustering_method, cmap="Blues", standard_scale=1)
     # plt.tight_layout()
