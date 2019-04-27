@@ -118,8 +118,11 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
     def get_color(k):
         return link_cols[k]
     plt.close('all')
+    fig = plt.figure(figsize=(150, 70))
     plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
-    z = dendrogram(lnk, labels=gt_values, color_threshold=0.17) # , link_color_func=get_color)
+    z = dendrogram(lnk, labels=[f'{idx}_{val}' for idx, val in enumerate(gt_values)],
+                   color_threshold=0.17,
+                   orientation='right', leaf_font_size=8, leaf_rotation=0) # , link_color_func=get_color)
     # z = dendrogram(lnk, labels=list(range(len(gt_values))))
     t = 0
     # for i in range(20):
@@ -134,42 +137,32 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
             i = (leg - 5.0) / 10.0
             if abs(i - int(i)) < 1e-5:
                 cluster_idxs[c].append(int(i))
-    intersting_clusters = []
-    with open(os.path.join(params.output_folder, 'dendogram_list.txt'), 'w+') as f:
-        f.write(f'order of leaves is {z["leaves"]}\n')
-        f.write(f'names of files is {filenames}\n')
-        prev = -1
-        for i in range(len(lists)-1):
-            if i==0 or z['color_list'][i] != z['color_list'][i-1]:
-                f.write(f'finished new cluster with len {i-prev}\n')
-                if i-prev > 18:
-                    f.write('***\n')
-                    intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
-                prev=i
-            prog_id = z["leaves"][i]
-            f.write(f'program # {prog_id}\n with gt {gt_values[prog_id]}\n')
-            f.write(f"{raw_lists[prog_id]}\n")
-        f.write(f'finished new cluster with len {i-prev}\n')
-        if i-prev > 18:
-            intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
-            f.write('***\n')
+    intersting_clusters = dump_program_to_list('dendogram_list.txt', filenames, gt_values,
+                                               lists, params, raw_lists, z)
 
-# plt.ylim(0, 5.5)
+    # plt.ylim(0, 5.5)
     plt.grid(axis='y')
     # plt.tight_layout()
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
-    plt.show()
+    # plt.show()
     for cluster_id, cluster in enumerate(intersting_clusters):
         clustering_type = 'average'
         clustering_metric = params.metric
         distances1 = pdist(matrix[cluster], metric=clustering_metric)
         lnk1 = linkage(distances1, clustering_type)
         plt.close('all')
+        fig = plt.figure(figsize=(70, 70))
         plt.title(f'cluster clustering method {clustering_type}, metric {clustering_metric}')
-        z1 = dendrogram(lnk1, labels=gt_values[cluster], color_threshold=0.17)
+        z1 = dendrogram(lnk1,  orientation='right', leaf_rotation=0, leaf_font_size=8,
+                        labels=[f'{idx}_{val}' for idx, val in zip(cluster, gt_values[cluster])],
+                        color_threshold=0.10)
         plt.grid(axis='y')
         plt.savefig(os.path.join(params.output_folder, f'dendogram_{cluster_id}_{clustering_metric}_{clustering_type}.svg'))
-        plt.show()
+        # plt.show()
+
+        dump_program_to_list(f'cluster_{cluster_id}_list', filenames[cluster],
+                             gt_values[cluster], lists[cluster], params, raw_lists[cluster], z1, cluster)
+
         from sklearn.naive_bayes import MultinomialNB
         from sklearn.model_selection import train_test_split
         clf = MultinomialNB()
@@ -201,6 +194,35 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
     # plt.figure(figsize=(10, 7))
     # plt.scatter(data[:,0], data[:,1], c=cluster.labels_, cmap='rainbow')
     pass
+
+
+def dump_program_to_list(output_filename, filenames, gt_values, lists, params, raw_lists, z, cluster=None):
+    intersting_clusters = []
+    with open(os.path.join(params.output_folder, output_filename), 'w+') as f:
+        f.write(f'order of leaves is {z["leaves"]}\n')
+        f.write(f'names of files is {filenames}\n')
+        prev = -1
+        for i in range(len(lists) - 1):
+            if i == 0 or z['color_list'][i] != z['color_list'][i - 1]:
+                f.write(f'finished new cluster with len {i - prev}\n')
+                if i - prev > 18:
+                    f.write('***\n')
+                    intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
+                prev = i
+            prog_id = z["leaves"][i]
+            if cluster is not None:
+                orig_prog_id = cluster[prog_id]
+                f.write(f'program # {orig_prog_id} # in cluster list {prog_id}, {i} with gt {gt_values[prog_id]}\n')
+            else:
+                f.write(f'program # {prog_id} with gt {gt_values[prog_id]}\n')
+            f.write(f"{raw_lists[prog_id]}\n")
+        f.write(f'finished new cluster with len {i - prev}\n')
+        if i - prev > 18:
+            intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
+            f.write('***\n')
+    return intersting_clusters
+
+
 def display_topics(model, feature_names, params):
     with open(os.path.join(params.output_folder, 'topic_modelling.txt'), 'w+') as f:
         for topic_idx, topic in enumerate(model.components_):

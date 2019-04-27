@@ -27,7 +27,8 @@ def str_ok(stri):
 def create_functions_list_from_filename(item):
     (filename, gt) = item
     try:
-        df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  #  error_bad_lines=False
+        #  engine='python',
+        df = pd.read_csv(filename, header=None, encoding='utf8')  #  error_bad_lines=False
         
     except Exception as e:
         # print(filename, e)
@@ -64,7 +65,7 @@ def create_functions_list_from_filename(item):
         #     except Exception:
         #         pass
         temp = df.values[realidx, 2]
-        while temp is None or math.isnan(temp):
+        while (temp is None or math.isnan(temp)) and realidx < len(df.values)-2:
             realidx -= 1
             temp = df.values[realidx, 2]
         curs.append(df.index[realidx])
