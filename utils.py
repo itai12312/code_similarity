@@ -1,37 +1,53 @@
 import pandas as pd
 from os.path import isfile, join
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.model_selection import train_test_split
-import numpy as np
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
 # import nltk
-import itertools
-import sklearn
-import traceback
 import os
 import math
 import parse
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+import pathos.multiprocessing as multiprocessing
+from tqdm import tqdm, trange
+import numpy as np
 
 
-def filter_type(x):
-    return isinstance(x, (int, float))
+def get_all_needed_inputs(output_folder, cores_to_use, input_folder, vectorizer,
+                          max_features, ngram_range=1, files_limit=100):
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+    if cores_to_use == -1:
+        cores_to_use = multiprocessing.cpu_count()
+    print(f'using {cores_to_use} cores')
+    mypath = join(input_folder, 'tokenized1')
+    vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[vectorizer]
+    vectorizer = vectorizer(max_df=0.95, min_df=2, max_features=max_features, ngram_range=(1, ngram_range))
+    vectorizer1, lists, bow_matrix, raw_lists, gt_values, filenames_list = vectorize_folder(mypath, files_limit,
+                                                                                            vectorizer, output_folder,
+                                                                                            cores_to_use,
+                                                                                            input_folder)
+    # if params.matix_form == '0-1':
+    #     assert params.vectorizer == 'count'
+    #     bow_matrix[bow_matrix >= 1.] = 1
+    #     # bow_matrix[bow_matrix == 0.] = 0
+    #     # bow_matrix = bow_matrix.astype(int)
+    # elif params.matix_form == 'tf-idf':
+    #     bow_matrix = bow_matrix * 1. / bow_matrix.sum(axis=1)[:, None]
+    vocab = list(vectorizer1.vocabulary_.keys())
+    return bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer1, filenames_list
 
 
 def str_ok(stri):
     return len(stri.replace("\n", "")) > 2
 
+
 def create_functions_list_from_filename(item):
     (filename, gt) = item
     try:
-        df = pd.read_csv(filename, header=None, engine='python', encoding='utf8')  #  error_bad_lines=False
+        #  engine='python',
+        df = pd.read_csv(filename, header=None, encoding='utf8')  #  error_bad_lines=False
     except Exception as e:
         # print(filename, e)
         return [],[],[], f'{e}', filename
-    
     df = df[df[0].notnull()]
     if len(df.index) == 0:
         return [], [],[],  f'no functions found!', filename
@@ -50,197 +66,81 @@ def create_functions_list_from_filename(item):
         data = f.read().splitlines()
     raw_start = df.loc[starters.index+1]
     # raw_end = df.loc[enders.index-1]
+    # df[2] = pd.to_numeric(df[2])
     curs = []
     for idx in range(len(enders.index)):
         cur = enders.index[idx]
         realidx = list(df.index).index(cur)
-        while math.isnan(df.values[realidx, 2]):
+        temp = df.values[realidx, 2]
+        while (temp is None or math.isnan(temp)):  # and realidx < len(df.values)-1:
             realidx -= 1
+            temp = df.values[realidx, 2]
         curs.append(df.index[realidx])
     raw_end = df.loc[curs]
-
-    # raw_ranges = list(zip(raw_start.index, raw_end.index))
+    assert len(raw_end) == len(raw_start)
     raw_ranges = list(zip(raw_start.values[:,2], raw_end.values[:,2]))
     functions_raw = ['\n'.join(data[int(begin):int(end)])
                      for (begin, end) in raw_ranges]
 
     rootpath, realfilename = parse.parse('{}/tokenized1/{}', filename)
     gt_values = []
+    filenames = []
     for (begin, end) in raw_ranges:
         possibble = gt.loc["\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'], 'nMethod_Line'].values
-        if begin in possibble:
+        if int(begin+1) in set(possibble):
             gt_values.append(1)
         else:
             gt_values.append(0)
-    # functions_raw = ['' for i in range(len(functions_list))]
-    return functions_list, functions_raw, gt_values, "", filename
+        filenames.append(filename)
+    return functions_list, functions_raw, gt_values, "", filenames
 
 
-def main2(params):
-    df = pd.read_csv(join(params.input_folder,
-                          'tokenized1/084_update_quality_minmax_sizeFixture.cs.tree-viewer.txt'), header=None)
-    df = df[df[0].notnull()]
-    df.applymap(filter_type)
-    matrix = CountVectorizer(max_features=10)
-    X = matrix.fit_transform(df[0]).toarray()
-    print(matrix.vocabulary_)
-    print(matrix.get_params())
-    df[0].iloc[0:10].str.cat(sep=' ')
-    starters = df.loc[df[0] == "BEGIN_METHOD"]
-    enders = df.loc[df[0] == "END_METHOD"]
-    zipped = list(zip(starters.index, enders.index))
+def create_functions_list_from_filenames_list(files_list, output_folder, core_count, input_folder):
     functions_list = []
-    for begin, end in zipped:
-        functions_list.append(df[0].iloc[begin:end+1].str.cat(sep=' '))
-    # create_functions_list_from_df(df)
+    raw_list = []
+    gt_values = []
+    filenames_list = []
+    sizecounter = len(files_list)
+    with open(join(output_folder, 'error_parsing.txt'), 'w+') as f:
+        gt = pd.read_csv(os.path.join(input_folder, 'results1.csv'), engine='python', encoding='utf8', error_bad_lines=False)
+        with tqdm(total=sizecounter, unit='files') as pbar:
+            if core_count > 1:
+                with multiprocessing.Pool(processes=core_count) as p:
+                    for i, (temp, temp_raw, temp_gt, code, filenames) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt) for file_name in files_list], chunksize=10))):
+                        functions_list, gt_values, raw_list, filenames_list = inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw, filenames_list)
+            else:
+                for i, filename in enumerate(files_list):
+                    temp, temp_raw, temp_gt, code, filenames = create_functions_list_from_filename((filename, gt))
+                    functions_list, gt_values, raw_list, filenames_list = inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw, filenames_list)
+    return functions_list, raw_list, gt_values, filenames_list
 
 
-def plotting(X_train, y_train, X_test, y_test, model, figname, output_folder):
-    plt.close()
-    model.fit(X_train, y_train)
-    ypred = model.predict(X_test)
-    # ypredtrain = model.predict(X_train)
-    # print('acc for train is {}'.format(sum(ypredtrain==y_train)/len(y_train)))
-    confusion = sklearn.metrics.confusion_matrix(y_test, ypred)
-    plt.imshow(confusion, interpolation='nearest')
-    plt.xlabel('pred')
-    plt.ylabel('gt')
-    plt.colorbar()
-
-    aaa = list(range(confusion.shape[0]))
-    for (j, i) in itertools.product(aaa, aaa):
-        plt.text(i, j, confusion[j, i], ha='center', va='center', color='blue')
-    classes = sorted(set(y_test))
-    tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=90)
-    plt.yticks(tick_marks, classes)
-    plt.tight_layout()
-    plt.savefig(join(output_folder, figname))
-    # plt.show()
-    with open(join(output_folder, 'f1_score_{}.txt'.format(figname)), 'w+') as f:
-        f.write('acc for test is {}\n'.format(np.trace(confusion)/np.sum(confusion, axis=(1,0))))
-        f.write('class id, precision, recall, f1 for {}\n'.format(figname))
-        for class_id in range(len(confusion)):
-            try:
-                precision = confusion[class_id, class_id]/sum(confusion[:, class_id]) if sum(confusion[:, class_id]) >0 else 0
-                recall = confusion[class_id, class_id]/sum(confusion[class_id, :]) if sum(confusion[class_id, :]) >0 else 0
-                f.write('{}, {}, {}, {}\n'.format(class_id, precision, recall, 2*precision*recall/(precision+recall) if precision+recall >0 else 0))
-            except Exception as e:
-                print(e)
-                print(traceback.print_exc())
-    plt.close()
-    return np.where(y_test != ypred)
+def inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw, filenames_list):
+    functions_list += temp
+    raw_list += temp_raw
+    gt_values += temp_gt
+    filenames_list += filenames
+    if code != "":
+        f.write(f'{filenames[0]}: {code}\n')
+    # pbar.update(sizecounter[file_idx])
+    pbar.update()
+    return functions_list, gt_values, raw_list, filenames_list
 
 
-def tsnescatterplot(output_folder, model, all_words, words_freq_genre):
-    # red green blue gray coral brown yellow azure plum pink lime olive
-    colors = {'Secure': 'green'}
-    words_list = [(word, genre, colors[genre]) for genre in words_freq_genre for word in words_freq_genre[genre]]
-    others = list(set(all_words)-set([item[0] for item in words_list]))
-    others = [(word, 'non', 'grey') for word in others]
-    all_words = np.array([w for w in others + words_list if w[0] in model.wv])
-    arrays = np.array([model.wv[word] for word in all_words[:, 0]])
-    # Reduces the dimensionality from 300 to 50 dimensions with PCA
-    reduc = PCA(n_components=50).fit_transform(arrays)
-    # Finds t-SNE coordinates for 2 dimensions
-    np.set_printoptions(suppress=True)
-    Y = TSNE(n_components=2, random_state=0, perplexity=15).fit_transform(reduc)
-    # Sets everything up to plot
-    df = pd.DataFrame({'x': [x for x in Y[:, 0]],
-                       'y': [y for y in Y[:, 1]],
-                       'words': all_words[:, 1],
-                       'color': all_words[:, 2]})
-    fig, _ = plt.subplots()
-    fig.set_size_inches(9, 9)
-    # Basic plot
-    p1 = sns.regplot(data=df,
-                     x="x",
-                     y="y",
-                     fit_reg=False,
-                     marker=".",
-                     scatter_kws={'s': 40,
-                                  'facecolors': df['color']
-                                  }
-                     )
-    # Adds annotations one by one with a loop
-    # for line in range(0, df.shape[0]):
-    #     p1.text(df["x"][line],
-    #             df['y'][line],
-    #             '  ' + df["words"][line].title(),
-    #             horizontalalignment='left',
-    #             verticalalignment='bottom', size='medium',
-    #             color=df['color'][line],
-    #             weight='normal'
-    #             ).set_size(15)
-    plt.xlim(Y[:, 0].min() - 50, Y[:, 0].max() + 50)
-    plt.ylim(Y[:, 1].min() - 50, Y[:, 1].max() + 50)
-
-    plt.title('t-SNE visualization for genres')
-    plt.savefig(os.path.join(output_folder, 'tsne.png'))
-    # plt.show()
-
-def plott(x, y, model, figname, output_folder):
-    xtrain, xtest, ytrain, ytest = train_test_split(x, y, test_size=0.14)
-    plotting(xtrain, ytrain, xtest, ytest, model, figname, output_folder)
+def vectorize_text(text, vectorizer):
+    bow_matrix = vectorizer.fit_transform(text)
+    return vectorizer, bow_matrix
 
 
-def text_to_vec(text, model, i):
-    c = 0
-    v = np.array([0.0]*model[list(model.wv.vocab.keys())[0]].size)
-    for sent in text:
-        for word in sent:
-            if word in model:
-                if word in model:
-                    v += model[word]
-                    c += 1
-    return v/c if c > 0 else v
+def get_filenames(mypath):
+    filenames = [join(mypath, f) for f in os.listdir(mypath) if isfile(join(mypath, f))]
+    return filenames
 
 
-def word_to_vec_plt(reduced_results, y, embedding_model, output_folder, model):
-    features = np.array([text_to_vec(reduced_results[i], embedding_model, i) for i in range(len(reduced_results))])
-    plott(features, y, model, 'word_to_vec_approach.png', output_folder)
+def vectorize_folder(path, limit, vectorizer, output_folder, core_count, input_folder):
+    files_list = get_filenames(path)
+    functions_list, raw_list, gt_values, filenames_list = create_functions_list_from_filenames_list(files_list[:limit], output_folder, core_count, input_folder)
+    vectorizer, bow_matrix = vectorize_text(functions_list, vectorizer)
+    return vectorizer, np.array(functions_list), bow_matrix, np.array(raw_list), np.array(gt_values), np.array(filenames_list)
 
 
-def fix_blocks_and_methods(input_df):
-    df = input_df
-
-    # Create a column with the lines of the PREVIOUS token    
-    df[4] = df[2].shift(1)
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(1),df[4]) # Fix "still NaN" values
-
-    # Copy the line number to the END_BLOCK and END_METHOD
-    df[2] = np.where(df[0]=="END_BLOCK",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
-    df[2] = np.where(df[0]=="END_METHOD",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
-
-    # Create a column with the lines of the NEXT token
-    df[4] = df[2].shift(-1)
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
-    df[4] = np.where(np.isnan(df[4]),df[4].shift(-1),df[4]) # Fix "still NaN" values
-
-    # Copy the line number for BEGIN_BLOCK and BEGIN_METHOD
-    df[2] = np.where(df[0]=="BEGIN_BLOCK",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
-    df[2] = np.where(df[0]=="BEGIN_METHOD",np.where(np.isnan(df[2]),df[4],df[2]),df[2])
-
-    # Set Id for BLOCK/METHOD lines
-    df[1] = np.where(df[0]=="BEGIN_METHOD",8001,df[1])
-    df[1] = np.where(df[0]=="END_METHOD",8002,df[1])
-    df[1] = np.where(df[0]=="BEGIN_BLOCK",8003,df[1])
-    df[1] = np.where(df[0]=="END_BLOCK",8004,df[1])
-
-    # Set column to 0 for METHOD/BLOCK lines
-    df[3] = np.where(df[0]=="BEGIN_METHOD",0,df[3])
-    df[3] = np.where(df[0]=="END_METHOD",0,df[3])
-    df[3] = np.where(df[0]=="BEGIN_BLOCK",0,df[3])
-    df[3] = np.where(df[0]=="END_BLOCK",0,df[3])
-
-    # Remove helper column
-    return(df.drop(columns=[4]))
