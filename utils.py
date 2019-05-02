@@ -110,13 +110,14 @@ def create_functions_list_from_filename(item):
             gt_values.append(0)
             vulnerabilities.append('')
         filenames.append(filename)
-    if min_token_count > -1:
-        ok = [((len(l) >= min_token_count and min_token_count>-1) or min_token_count == -1) for l in functions_list]
+    ok = [((len(l) >= min_token_count and min_token_count>-1) or min_token_count == -1) for l in functions_list]
     return filter(ok, functions_list), filter(ok,functions_raw), \
            filter(ok,gt_values), "", filter(ok,filenames), filter(ok,vulnerabilities)
 
+
 def filter(ok, array):
     return [b for a,b in zip(ok, array) if a]
+
 
 def create_functions_list_from_filenames_list(files_list, output_folder, core_count, input_folder, security_keywords=None, min_token_count=-1):
     functions_list = []

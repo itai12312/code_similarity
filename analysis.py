@@ -44,7 +44,7 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
             if abs(i - int(i)) < 1e-5:
                 cluster_idxs[c].append(int(i))
     intersting_clusters = dump_program_to_list_and_get_intersting_clusters('dendogram_list.txt', filenames, gt_values,
-                                                                           lists, params, raw_lists, z)
+                                                                           lists, params, raw_lists, all_vulnerabilities, z)
     plt.grid(axis='y')
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     for cluster_id, cluster in enumerate(intersting_clusters):
@@ -61,7 +61,8 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
         plt.grid(axis='y')
         plt.savefig(os.path.join(params.output_folder, f'dendogram_{cluster_id}_{clustering_metric}_{clustering_type}.svg'))
         dump_program_to_list_and_get_intersting_clusters(f'cluster_{cluster_id}_list', filenames[cluster],
-                                                         gt_values[cluster], lists[cluster], params, raw_lists[cluster], z1, cluster)
+                                                         gt_values[cluster], lists[cluster], params, raw_lists[cluster],
+                                                         all_vulnerabilities[cluster],z1, cluster)
 
         from sklearn.naive_bayes import MultinomialNB
         from sklearn.model_selection import train_test_split
@@ -75,7 +76,7 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
     # plt.scatter(data[:,0], data[:,1], c=cluster.labels_, cmap='rainbow')
 
 
-def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames, gt_values, lists, params, raw_lists, z, cluster=None):
+def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames, gt_values, lists, params, raw_lists, all_vulnerabilities,z, cluster=None):
     intersting_clusters = []
     with open(os.path.join(params.output_folder, output_filename), 'w+') as f:
         f.write(f'order of leaves is {z["leaves"]}\n')
@@ -91,9 +92,9 @@ def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames,
             prog_id = z["leaves"][i]
             if cluster is not None:
                 orig_prog_id = cluster[prog_id]
-                f.write(f'program # {orig_prog_id} # in cluster list {prog_id}, {i} with gt {gt_values[prog_id]}\n')
+                f.write(f'program # {orig_prog_id} # in cluster list {prog_id}, {i} with gt {gt_values[prog_id]} and vurn {all_vulnerabilities[prog_id]}\n')
             else:
-                f.write(f'program # {prog_id}, location in cluser {i} with gt {gt_values[prog_id]}\n')
+                f.write(f'program # {prog_id}, location in cluser {i} with gt {gt_values[prog_id]} and vurn: {all_vulnerabilities[prog_id]}\n')
             f.write(f"{raw_lists[prog_id]}\n")
         f.write(f'finished new cluster with len {i - prev}\n')
         if i - prev > 18:
