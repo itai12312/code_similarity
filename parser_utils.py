@@ -23,10 +23,12 @@ def get_parser():
     parser.add_argument('--min_word_count', action="store", dest="min_word_count", type=int, default=40)
     parser.add_argument('--num_workers', action="store", dest="num_workers", type=int, default=4)
     parser.add_argument('--cores_to_use', action="store", dest="cores_to_use", type=int, default=1)
+    parser.add_argument('--min_token_count', action="store", dest="min_token_count", type=int, default=-1)
     parser.add_argument('--context', action="store", dest="context", type=int, default=10)
     parser.add_argument('--seed', action="store", dest="seed", type=int, default=0)
     parser.add_argument('--no_top_words', action="store", dest="no_top_words", type=int, default=10)
     parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
+    parser.add_argument('--security_keywords', action="store", dest="security_keywords", nargs='*', default=None)
     return parser
 
 

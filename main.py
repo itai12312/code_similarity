@@ -18,6 +18,7 @@ def main(args=None):
         os.mkdir(params.output_folder)
     with open(os.path.join(params.output_folder, 'args.txt'), 'w+') as f:
         f.write(' '.join(args) if args is not None else ' '.join(sys.argv[1:]))
+        f.write('\nparams are:{}\n'.format(params))
     if params.profiler:
         profile(params)
     else:
@@ -28,19 +29,21 @@ def main_(params):
     # can be called using dictobj.DictionaryObject({'metric': 'euclidean'}) or
     # str_to_params('--output_folder result3 --metric euclidean --input_folder ../codes_short/ --files_limit 100 --max_features 2000')
     # for construction of params object
-    bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer, filenames_list = \
+    bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
         get_all_needed_inputs_params(params)
     # intersting_indices = analyze_functions(bow_matrix, METRIC_FUNCTIONS[params.metric], lists, raw_lists,
     #                   vocab, params, gt_values)
     # to access metrics directly, look in scipy.spatial.distance
     intersting_indices = np.array(list(range(len(lists))))
     analyze_functions2(bow_matrix[intersting_indices], lists[intersting_indices], raw_lists[intersting_indices],
-                       vocab, params, gt_values[intersting_indices], vectorizer, filenames_list[intersting_indices])
+                       vocab, params, gt_values[intersting_indices], vectorizer, filenames_list[intersting_indices],
+                       all_vulnerabilities[intersting_indices], all_start_raw[intersting_indices])
 
 
 def get_all_needed_inputs_params(params):
     return get_all_needed_inputs(params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
-                                 params.max_features, params.ngram_range, params.files_limit)
+                                 params.max_features, params.ngram_range, params.files_limit,
+                                 params.security_keywords, params.min_token_count)
 
 
 def profile(params):
