@@ -45,7 +45,11 @@ def str_ok(stri):
 
 
 def isin(a, b):
-    return not set(a).isdisjoint(set(b))
+    for word in a:
+        for sent in b:
+            if word in sent:
+                return True
+    return False
 
 
 def create_functions_list_from_filename(item):
@@ -103,6 +107,8 @@ def create_functions_list_from_filename(item):
     for (begin, end) in raw_ranges:
         indices = (gt['nMethod_Line'] == begin+1) & ("\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'])
         possibble = gt.loc[indices, 'qName'].values  # nMethod_Line
+        possibble = set(possibble)
+        possibble = [poss.lower() for poss in possibble]
         if len(possibble) > 0:  # int(begin+1) in set(possibble):
             if keywords is None or isin(keywords, possibble):
                 gt_values.append(1)
