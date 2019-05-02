@@ -86,9 +86,10 @@ def create_functions_list_from_filename(item):
     gt_values = []
     filenames = []
     for (begin, end) in raw_ranges:
-        possibble = gt.loc["\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'], 'nMethod_Line'].values
-        if int(begin+1) in set(possibble):
+        possibble = gt.loc[(gt['nMethod_Line'] == begin+1) & ("\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name']), 'qName'].values  # nMethod_Line
+        if len(possibble) > 0: # int(begin+1) in set(possibble):
             gt_values.append(1)
+            # type_of_vurn = gt.loc[ & ("\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name']), 'qName'].values
         else:
             gt_values.append(0)
         filenames.append(filename)
