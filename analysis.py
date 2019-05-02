@@ -8,7 +8,7 @@ from scipy.spatial.distance import pdist
 from sklearn.cluster import AgglomerativeClustering
 
 
-def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vectorizer, filenames):
+def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vectorizer, filenames, all_vulnerabilities):
     if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
         matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
     elif params.vectorizer == 'count' and params.matrix_form == '0-1':
