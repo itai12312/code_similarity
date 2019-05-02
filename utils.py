@@ -93,7 +93,7 @@ def create_functions_list_from_filename(item):
     raw_end = df.loc[curs]
     assert len(raw_end) == len(raw_start)
     raw_ranges = list(zip(raw_start.values[:, 2], raw_end.values[:, 2]))
-    functions_raw = [('\n'.join(data[int(begin):int(end)] if real_curs[idx] > -1 else '\n'.join(data[int(begin):])))
+    functions_raw = [('\n'.join(data[int(begin):int(end)] if real_curs[idx] > -1 else data[int(begin):]))
                       for idx, (begin, end) in enumerate(raw_ranges)]
     separting_string = f'{os.sep}tokenized1{os.sep}'
     rootpath, realfilename = filename.split(separting_string)  # parse.parse(f'{{}}{os.sep}tokenized1{os.sep}{{}}', filename)
