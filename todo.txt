@@ -1,1 +1,22 @@
 chunksize - for better multiprocessing
+
+
+filter outliers  - at least X tokens for it to be a legal sentence
+#1 - look at functions at the left end of the corener-are they the similar language? sanity check
+add code to get function number!
+#2 - same per cluster!+inspect if logically in same cluster
+in dendorgram 0-three zeros in the middle-look at their code
+cluster number1-are 0's (logically)clustered?
+
+redefine definition of secrity threat
+prior distribution of data
+get function from 4 differrent datasets and try to cluster and see results are random(e..g not all from same datasets in the same cluster-sanity check)
+
+#5 train on all clusters vs seprate ones
+which classifier to use-doesn't really matter at this stage, #5 is more important
+naive based works fine and is explianalable, but code has less entropy, so might not work. for future-think about which model will work with code embedding
+
+
+/home/itai/anaconda3/bin/python
+
+
