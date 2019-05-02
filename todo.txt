@@ -1,6 +1,7 @@
 chunksize - for better multiprocessing
 
-
+bug in parsing programs!!!!!!!
+on larger size!!!
 filter outliers  - at least X tokens for it to be a legal sentence
 #1 - look at functions at the left end of the corener-are they the similar language? sanity check
 add code to get function number!
