@@ -6,9 +6,12 @@ import os
 
 from scipy.spatial.distance import pdist
 from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import confusion_matrix
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import train_test_split
 
 
-def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vectorizer, filenames):
+def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vectorizer, filenames, all_vulnerabilities, all_start_raw):
     if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
         matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
     elif params.vectorizer == 'count' and params.matrix_form == '0-1':
@@ -44,9 +47,10 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
             if abs(i - int(i)) < 1e-5:
                 cluster_idxs[c].append(int(i))
     intersting_clusters = dump_program_to_list_and_get_intersting_clusters('dendogram_list.txt', filenames, gt_values,
-                                                                           lists, params, raw_lists, z)
+                                                                           lists, params, raw_lists, all_vulnerabilities, all_start_raw, z)
     plt.grid(axis='y')
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
+    x_trains, x_tests, y_trains, y_tests = [], [], [], []
     for cluster_id, cluster in enumerate(intersting_clusters):
         clustering_type = 'average'
         clustering_metric = params.metric
@@ -61,21 +65,34 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
         plt.grid(axis='y')
         plt.savefig(os.path.join(params.output_folder, f'dendogram_{cluster_id}_{clustering_metric}_{clustering_type}.svg'))
         dump_program_to_list_and_get_intersting_clusters(f'cluster_{cluster_id}_list', filenames[cluster],
-                                                         gt_values[cluster], lists[cluster], params, raw_lists[cluster], z1, cluster)
+                                                         gt_values[cluster], lists[cluster], params, raw_lists[cluster],
+                                                         all_vulnerabilities[cluster], all_start_raw[cluster], z1, cluster)
 
-        from sklearn.naive_bayes import MultinomialNB
-        from sklearn.model_selection import train_test_split
-        clf = MultinomialNB()
-        x_train, x_test, y_train, y_test = train_test_split(matrix[cluster], gt_values[cluster])
-        clf.fit(x_train, y_train)
-        res = clf.predict(x_test)
-        acc = sum(res==y_test)/len(res)
-        print('acc for cluster is {}'.format(acc))
+        confusion, x_train, x_test, y_train, y_test = predictions(gt_values, matrix)
+        x_trains.append(x_train)
+        x_tests.append(x_test)
+        y_trains.append(y_train)
+        y_tests.append(y_test)
+        print(f'confusion for clusters {cluster_id} is:')
+        print(f'{confusion}')
     pass
+    clf = MultinomialNB()
+    clf.fit(np.concatenate(x_trains), np.concatenate(y_trains))
+    pred = clf.predict(np.concatenate(x_tests))
+    print(f'for all, confusion is ')
+    print(f'{confusion_matrix(pred, np.concatenate(y_tests))}')
     # plt.scatter(data[:,0], data[:,1], c=cluster.labels_, cmap='rainbow')
 
 
-def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames, gt_values, lists, params, raw_lists, z, cluster=None):
+def predictions(gt_values, matrix):
+    clf = MultinomialNB()
+    x_train, x_test, y_train, y_test = train_test_split(matrix, gt_values)
+    clf.fit(x_train, y_train)
+    res = clf.predict(x_test)
+    return confusion_matrix(res, y_test), x_train, x_test, y_train, y_test
+
+
+def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames, gt_values, lists, params, raw_lists, all_vulnerabilities, all_start_raw, z, cluster=None):
     intersting_clusters = []
     with open(os.path.join(params.output_folder, output_filename), 'w+') as f:
         f.write(f'order of leaves is {z["leaves"]}\n')
@@ -89,11 +106,13 @@ def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames,
                     intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
                 prev = i
             prog_id = z["leaves"][i]
+
             if cluster is not None:
                 orig_prog_id = cluster[prog_id]
-                f.write(f'program # {orig_prog_id} # in cluster list {prog_id}, {i} with gt {gt_values[prog_id]}\n')
+                begin_message = f'program # {orig_prog_id}, in cluster list {prog_id}, index in list {i}'
             else:
-                f.write(f'program # {prog_id}, location in cluser {i} with gt {gt_values[prog_id]}\n')
+                begin_message = f'program # {prog_id}, location in cluser {i}'
+            f.write(begin_message+f' with gt {gt_values[prog_id]}\n  in filename{filenames[prog_id]} starts@{all_start_raw[prog_id]} and vurn: {all_vulnerabilities[prog_id]}\n')
             f.write(f"{raw_lists[prog_id]}\n")
         f.write(f'finished new cluster with len {i - prev}\n')
         if i - prev > 18:
