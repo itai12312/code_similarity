@@ -36,8 +36,7 @@ def get_all_needed_inputs(output_folder, cores_to_use, input_folder, vectorizer,
     #     # bow_matrix = bow_matrix.astype(int)
     # elif params.matix_form == 'tf-idf':
     #     bow_matrix = bow_matrix * 1. / bow_matrix.sum(axis=1)[:, None]
-    vocab = list(vectorizer1.vocabulary_.keys())
-    return bow_matrix, gt_values, lists, raw_lists, vocab, vectorizer1, filenames_list, all_vulnerabilities, all_start_raw
+    return bow_matrix, gt_values, lists, raw_lists, vectorizer1, filenames_list, all_vulnerabilities, all_start_raw
 
 
 def str_ok(stri):
@@ -57,6 +56,9 @@ def create_functions_list_from_filename(item):
     try:
         #  engine='python',
         df = pd.read_csv(filename, header=None, encoding='utf8')  #  error_bad_lines=False
+        with open(filename.replace("{0}tokenized1{0}".format(os.sep),
+                                   "{0}c_sharp_code{0}".format(os.sep)).replace(".tree-viewer.txt", "")) as f:
+            data = f.read().splitlines()
     except Exception as e:
         # print(filename, e)
         return [],[],[], f'{e}', [filename], [], []
@@ -74,9 +76,6 @@ def create_functions_list_from_filename(item):
     zipped = list(zip(starters.index, enders.index))
     functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped]
     # # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
-    with open(filename.replace("{0}tokenized1{0}".format(os.sep),
-                               "{0}c_sharp_code{0}".format(os.sep)).replace(".tree-viewer.txt", "")) as f:
-        data = f.read().splitlines()
     raw_start = df.loc[starters.index+1]
     # raw_end = df.loc[enders.index-1]
     # df[2] = pd.to_numeric(df[2])
@@ -86,10 +85,13 @@ def create_functions_list_from_filename(item):
         cur = enders.index[idx]
         realidx = list(df.index).index(cur)
         temp = df.values[realidx, 2]
-        while is_not_ok(temp) and realidx < len(df.values)-1:
+        steps = 0
+        steps_num = 7
+        while is_not_ok(temp) and realidx < len(df.values)-1 and steps < steps_num:
             realidx += 1
             temp = df.values[realidx, 2]
-        if is_not_ok(temp) and realidx == len(df.values)-1:
+            steps += 1
+        if (is_not_ok(temp) and realidx == len(df.values)-1) or steps == steps_num:
             real_curs.append(-1)
         else:
             real_curs.append(df.index[realidx])
@@ -105,7 +107,7 @@ def create_functions_list_from_filename(item):
     filenames = []
     vulnerabilities = []
     for (begin, end) in raw_ranges:
-        indices = (gt['nMethod_Line'] == begin+1) & ("\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'])
+        indices = (gt['nMethod_Line'] == int(begin)+1) & ("\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'])
         possibble = gt.loc[indices, 'qName'].values  # nMethod_Line
         possibble = set(possibble)
         possibble = [poss.lower() for poss in possibble]
@@ -126,7 +128,13 @@ def create_functions_list_from_filename(item):
            filter(ok,gt_values), "", filter(ok,filenames), filter(ok,vulnerabilities), filter(ok, list(raw_start.values[:, 2]))
 
 
+def intify(l):
+    return [(int(item[0]), int(item[1])) for item in l]
+
+
 def is_not_ok(temp):
+    if isinstance(temp, str):
+        temp = int(temp)
     return temp is None or math.isnan(temp)
 
 
