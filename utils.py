@@ -45,7 +45,11 @@ def str_ok(stri):
 
 
 def isin(a, b):
-    return not set(a).isdisjoint(set(b))
+    for word in a:
+        for sent in b:
+            if word in sent:
+                return True
+    return False
 
 
 def create_functions_list_from_filename(item):
@@ -93,7 +97,7 @@ def create_functions_list_from_filename(item):
     raw_end = df.loc[curs]
     assert len(raw_end) == len(raw_start)
     raw_ranges = list(zip(raw_start.values[:, 2], raw_end.values[:, 2]))
-    functions_raw = [('\n'.join(data[int(begin):int(end)] if real_curs[idx] > -1 else '\n'.join(data[int(begin):])))
+    functions_raw = [('\n'.join(data[int(begin):int(end)] if real_curs[idx] > -1 else data[int(begin):]))
                       for idx, (begin, end) in enumerate(raw_ranges)]
     separting_string = f'{os.sep}tokenized1{os.sep}'
     rootpath, realfilename = filename.split(separting_string)  # parse.parse(f'{{}}{os.sep}tokenized1{os.sep}{{}}', filename)
@@ -103,6 +107,8 @@ def create_functions_list_from_filename(item):
     for (begin, end) in raw_ranges:
         indices = (gt['nMethod_Line'] == begin+1) & ("\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'])
         possibble = gt.loc[indices, 'qName'].values  # nMethod_Line
+        possibble = set(possibble)
+        possibble = [poss.lower() for poss in possibble]
         if len(possibble) > 0:  # int(begin+1) in set(possibble):
             if keywords is None or isin(keywords, possibble):
                 gt_values.append(1)

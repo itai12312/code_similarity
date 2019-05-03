@@ -57,7 +57,7 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
         distances1 = pdist(matrix[cluster], metric=clustering_metric)
         lnk1 = linkage(distances1, clustering_type)
         plt.close('all')
-        fig = plt.figure(figsize=(70, 70))
+        fig = plt.figure() # figsize=(70, 70)
         plt.title(f'cluster clustering method {clustering_type}, metric {clustering_metric}')
         z1 = dendrogram(lnk1,  orientation='right', leaf_rotation=0, leaf_font_size=8,
                         labels=[f'{idx}_{val}' for idx, val in zip(cluster, gt_values[cluster])],
