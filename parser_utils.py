@@ -27,6 +27,7 @@ def get_parser():
     parser.add_argument('--context', action="store", dest="context", type=int, default=10)
     parser.add_argument('--seed', action="store", dest="seed", type=int, default=0)
     parser.add_argument('--no_top_words', action="store", dest="no_top_words", type=int, default=10)
+    parser.add_argument('--cluster_analysis_count', action="store", dest="cluster_analysis_count", type=int, default=-1)
     parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
     parser.add_argument('--security_keywords', action="store", dest="security_keywords", nargs='*', default=None)
     return parser

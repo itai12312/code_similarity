@@ -11,20 +11,23 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
 
 
-def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vectorizer, filenames, all_vulnerabilities, all_start_raw):
+def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, vectorizer, filenames, all_vulnerabilities, all_start_raw):
+    # vocab = list(vectorizer.vocabulary_.keys())
     if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
         matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
     elif params.vectorizer == 'count' and params.matrix_form == '0-1':
         matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
         matrix[matrix >= 1.] = 1
+    else:
+        matrix = matrix1.toarray()
     # distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
     # fig = plt.figure(figsize=(25, 10))
     distances = pdist(matrix, metric=params.metric)
     lnk = linkage(distances, params.clustering_method)
     # TODO:get list of filenames and locations!!
-    cluster = AgglomerativeClustering(n_clusters=params.n_clusters, affinity=params.metric, linkage=params.clustering_method)
-    results = cluster.fit_predict(matrix)
-    colors = ['blue', 'orange', 'olive', 'green', 'cyan', 'brown', 'purple', 'pink', 'red']
+    # cluster = AgglomerativeClustering(n_clusters=params.n_clusters, affinity=params.metric, linkage=params.clustering_method)
+    # results = cluster.fit_predict(matrix)
+    # colors = ['blue', 'orange', 'olive', 'green', 'cyan', 'brown', 'purple', 'pink', 'red']
     # fl = fcluster(lnk, params.n_clusters,criterion='maxclust')
     # assert fl == results
     # link_cols = {}
@@ -48,40 +51,43 @@ def analyze_functions2(matrix1, lists, raw_lists, vocab, params, gt_values, vect
                 cluster_idxs[c].append(int(i))
     intersting_clusters = dump_program_to_list_and_get_intersting_clusters('dendogram_list.txt', filenames, gt_values,
                                                                            lists, params, raw_lists, all_vulnerabilities, all_start_raw, z)
+    if params.cluster_analysis_count > -1:
+        intersting_clusters = intersting_clusters[params.cluster_analysis_count]
     plt.grid(axis='y')
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     x_trains, x_tests, y_trains, y_tests = [], [], [], []
-    for cluster_id, cluster in enumerate(intersting_clusters):
-        clustering_type = 'average'
-        clustering_metric = params.metric
-        distances1 = pdist(matrix[cluster], metric=clustering_metric)
-        lnk1 = linkage(distances1, clustering_type)
-        plt.close('all')
-        fig = plt.figure() # figsize=(70, 70)
-        plt.title(f'cluster clustering method {clustering_type}, metric {clustering_metric}')
-        z1 = dendrogram(lnk1,  orientation='right', leaf_rotation=0, leaf_font_size=8,
-                        labels=[f'{idx}_{val}' for idx, val in zip(cluster, gt_values[cluster])],
-                        color_threshold=0.10)
-        plt.grid(axis='y')
-        plt.savefig(os.path.join(params.output_folder, f'dendogram_{cluster_id}_{clustering_metric}_{clustering_type}.svg'))
-        dump_program_to_list_and_get_intersting_clusters(f'cluster_{cluster_id}_list', filenames[cluster],
-                                                         gt_values[cluster], lists[cluster], params, raw_lists[cluster],
-                                                         all_vulnerabilities[cluster], all_start_raw[cluster], z1, cluster)
+    with open(os.path.join(params.output_folder, 'cluster_analysis.txt'), 'w+') as f_cluster:
+        for cluster_id, cluster in enumerate(intersting_clusters):
+            clustering_type = 'average'
+            clustering_metric = params.metric
+            distances1 = pdist(matrix[cluster], metric=clustering_metric)
+            lnk1 = linkage(distances1, clustering_type)
+            plt.close('all')
+            fig = plt.figure() # figsize=(70, 70)
+            plt.title(f'cluster clustering method {clustering_type}, metric {clustering_metric}')
+            z1 = dendrogram(lnk1,  orientation='right', leaf_rotation=0, leaf_font_size=8,
+                            labels=[f'{idx}_{val}' for idx, val in zip(cluster, gt_values[cluster])],
+                            color_threshold=0.10)
+            plt.grid(axis='y')
+            plt.savefig(os.path.join(params.output_folder, f'dendogram_{cluster_id}_{clustering_metric}_{clustering_type}.svg'))
+            dump_program_to_list_and_get_intersting_clusters(f'cluster_{cluster_id}_list', filenames[cluster],
+                                                             gt_values[cluster], lists[cluster], params, raw_lists[cluster],
+                                                             all_vulnerabilities[cluster], all_start_raw[cluster], z1, cluster)
 
-        confusion, x_train, x_test, y_train, y_test = predictions(gt_values, matrix)
-        x_trains.append(x_train)
-        x_tests.append(x_test)
-        y_trains.append(y_train)
-        y_tests.append(y_test)
-        print(f'confusion for clusters {cluster_id} is:')
-        print(f'{confusion}')
-    pass
-    clf = MultinomialNB()
-    clf.fit(np.concatenate(x_trains), np.concatenate(y_trains))
-    pred = clf.predict(np.concatenate(x_tests))
-    print(f'for all, confusion is ')
-    print(f'{confusion_matrix(pred, np.concatenate(y_tests))}')
-    # plt.scatter(data[:,0], data[:,1], c=cluster.labels_, cmap='rainbow')
+            confusion, x_train, x_test, y_train, y_test = predictions(gt_values, matrix)
+            x_trains.append(x_train)
+            x_tests.append(x_test)
+            y_trains.append(y_train)
+            y_tests.append(y_test)
+            f_cluster.write(f'confusion for clusters {cluster_id} is\n')
+            f_cluster.write(f'{confusion}\n')
+        pass
+        clf = MultinomialNB()
+        clf.fit(np.concatenate(x_trains), np.concatenate(y_trains))
+        pred = clf.predict(np.concatenate(x_tests))
+        f_cluster.write(f'for all, confusion is\n')
+        f_cluster.write(f'{confusion_matrix(pred, np.concatenate(y_tests))}\n')
+        # plt.scatter(data[:,0], data[:,1], c=cluster.labels_, cmap='rainbow')
 
 
 def predictions(gt_values, matrix):

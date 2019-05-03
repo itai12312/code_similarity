@@ -1,5 +1,5 @@
-in_filename = '../codes_short/results.csv'
-out_filename = '../codes_short/results1.csv'
+in_filename = '../codes/results.csv'
+out_filename = '../codes/results1.csv'
 
 from functools import partial
 chunksize = 100*1024*1024 # read 100MB at a time
