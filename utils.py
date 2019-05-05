@@ -56,8 +56,8 @@ def create_functions_list_from_filename(item):
     try:
         #  engine='python',
         df = pd.read_csv(filename, header=None, encoding='utf8')  #  error_bad_lines=False
-        with open(filename.replace("{0}tokenized1{0}".format(os.sep),
-                                   "{0}c_sharp_code{0}".format(os.sep)).replace(".tree-viewer.txt", "")) as f:
+        with open(filename.replace("/tokenized1{0}".format(os.sep),
+                                   "/c_sharp_code{0}".format(os.sep)).replace(".tree-viewer.txt", "")) as f:
             data = f.read().splitlines()
     except Exception as e:
         # print(filename, e)
@@ -101,7 +101,10 @@ def create_functions_list_from_filename(item):
     raw_ranges = list(zip(raw_start.values[:, 2], raw_end.values[:, 2]))
     functions_raw = [('\n'.join(data[int(begin):int(end)] if real_curs[idx] > -1 else data[int(begin):]))
                       for idx, (begin, end) in enumerate(raw_ranges)]
-    separting_string = f'{os.sep}tokenized1{os.sep}'
+    if '\\' in filename:
+        separting_string = '/tokenized1\\'
+    else:
+        separting_string = '/tokenized1/'
     rootpath, realfilename = filename.split(separting_string)  # parse.parse(f'{{}}{os.sep}tokenized1{os.sep}{{}}', filename)
     gt_values = []
     filenames = []
@@ -171,16 +174,17 @@ def create_functions_list_from_filenames_list(files_list, output_folder, core_co
     return functions_list, raw_list, gt_values, filenames_list, all_vulnerabilities, all_start_raw
 
 
-def inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw,
+def inner_loop(error_code, f, filenames, functions_list, gt_values, pbar, raw_list, temp, temp_gt, temp_raw,
                filenames_list, vulnerabilities, all_vulnerabilities, start_raw, all_start_raw):
-    all_start_raw += start_raw
-    functions_list += temp
-    raw_list += temp_raw
-    gt_values += temp_gt
-    filenames_list += filenames
-    all_vulnerabilities += vulnerabilities
-    if code != "":
-        f.write(f'{filenames[0]}: {code}\n')
+    if len(start_raw) > 0:
+        all_start_raw += start_raw
+        functions_list += temp
+        raw_list += temp_raw
+        gt_values += temp_gt
+        filenames_list += filenames
+        all_vulnerabilities += vulnerabilities
+    if error_code != "":
+        f.write(f'{filenames[0]}: {error_code}\n')
     # pbar.update(sizecounter[file_idx])
     pbar.update()
     return functions_list, gt_values, raw_list, filenames_list, all_vulnerabilities, all_start_raw
