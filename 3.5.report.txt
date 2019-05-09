@@ -1,0 +1,14 @@
+for result_500: cluster 4,12,13 one's, all other are mostly zeros
+for result_500_limit_10: 16 one's, all other are mostly zeros
+for result_5_xss_sql_injection:(on engineered dataset)
+security problems are similar
+naive based always says no security problems!!!
+
+
+
+1388, 1387 in cluster 13 analysis - why is distance so large when difference is one argument?
+sanity check-also compute tfidf distance by hand!!!!!
+freeze vocabulary
+TODO: sometimes stuck on certain file during parsing, find out why
+fix memory limit-crashes on 2000 files(uses more than 20GB RAM)
+
