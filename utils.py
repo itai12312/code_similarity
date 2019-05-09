@@ -127,7 +127,7 @@ def create_functions_list_from_filename(item):
 
 
 def is_not_ok(temp):
-    return temp is None or math.isnan(temp)
+    return temp is None or type(temp) is str or math.isnan(temp)
 
 
 def filter(ok, array):
