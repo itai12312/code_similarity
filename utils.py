@@ -126,7 +126,7 @@ def create_functions_list_from_filename(item):
             gt_values.append(0)
             vulnerabilities.append('')
         filenames.append(filename)
-    ok = [((len(l) >= min_token_count >-1) or min_token_count == -1) for l in functions_list]
+    ok = [((len(functions_raw[idx].split("\n")) >= min_token_count >-1) or min_token_count == -1) for idx, l in enumerate(functions_list)]
     return filter(ok, functions_list), filter(ok,functions_raw), \
            filter(ok,gt_values), "", filter(ok,filenames), filter(ok,vulnerabilities), filter(ok, list(raw_start.values[:, 2]))
 
