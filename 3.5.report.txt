@@ -1,0 +1,26 @@
+for result_500: cluster 4,12,13 one's, all other are mostly zeros
+for result_500_limit_10: 16 one's, all other are mostly zeros
+for result_5_xss_sql_injection:(on engineered dataset)
+security problems are similar
+naive based always says no security problems!!!
+
+
+
+1388, 1387 in cluster 13 analysis - why is distance so large when difference is one argument?
+sanity check-also compute tfidf distance by hand!!!!!
+freeze vocabulary
+TODO: sometimes stuck on certain file during parsing, find out why
+fix memory limit-crashes on 2000 files(uses more than 20GB RAM)
+
+[14:48, 3/5/2019] אדר וידמן: לעשות map reduce עם pyspark:
+ 1. לבנות counter של הtokens, כדי שיהיו כל הtokens שצריך. מספיק מדגם אקראי בשביל לבנות אותם. אולי למדל לקחת לא את כל הפונקציות בקובץ. זה המילון שלנו וזהו.
+2. להפוך כל פונקציה לווקטור על פי vocabulary שייצרנו.
+3. על הווקטורים לעשות את הclustering.
+ואז חלק מהדברים כבר קיימים לנו.
+[14:48, 3/5/2019] אדר וידמן: לקחת הרבה קבצים אבל לא לפי הסדר האלפאביתי שלהם.
+[14:49, 3/5/2019] אדר וידמן: Sanity:
+לעבור על פונקציות דומות ולראות אם זו בעצם אותה פונקציה. באותו פרויקט.
+למשל לבדוק את הפונקציות 1387,1388.
+אולי מספר הfeatures נמוך מדי, למשל.
+[14:49, 3/5/2019] אדר וידמן: מאד קריטי לקבע את הvocabulary.
+[14:49, 3/5/2019] אדר וידמן: לחשב ידנית כמה מרחקים.

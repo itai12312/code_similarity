@@ -11,7 +11,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
 
 
-def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, vectorizer, filenames, all_vulnerabilities, all_start_raw):
+def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, filenames, all_vulnerabilities, all_start_raw):
     # vocab = list(vectorizer.vocabulary_.keys())
     if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
         matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
@@ -52,7 +52,7 @@ def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, vectorizer,
     intersting_clusters = dump_program_to_list_and_get_intersting_clusters('dendogram_list.txt', filenames, gt_values,
                                                                            lists, params, raw_lists, all_vulnerabilities, all_start_raw, z)
     if params.cluster_analysis_count > -1:
-        intersting_clusters = intersting_clusters[params.cluster_analysis_count]
+        intersting_clusters = intersting_clusters[:params.cluster_analysis_count]
     plt.grid(axis='y')
     plt.savefig(os.path.join(params.output_folder, 'dendogram.svg'))
     x_trains, x_tests, y_trains, y_tests = [], [], [], []
