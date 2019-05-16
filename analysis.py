@@ -11,7 +11,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
 
 
-def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, vectorizer, filenames, all_vulnerabilities, all_start_raw):
+def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, filenames, all_vulnerabilities, all_start_raw):
     # vocab = list(vectorizer.vocabulary_.keys())
     if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
         matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]

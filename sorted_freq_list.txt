@@ -1,4 +1,4 @@
-34814
+count,name
 193321, identifiername
 56435, simplememberaccessexpression
 54531, argument
@@ -274,7 +274,6 @@
 188, values
 186, interpolatedstringexpression
 186, coalesceexpression
-186,         {
 185, item
 184, flags
 183, switchstatement
@@ -285,7 +284,6 @@
 178, newnode
 178, filetarget
 178, controls
-178,         }
 177, switch
 176, finally
 176, eventargs
@@ -13059,7 +13057,7 @@
 3,  "system.argiterator "
 3,  "subfolder "
 3,  "style "
-3,  "stringa di connessione non impostata nel dal 2° "
+3,  "stringa di connessione non impostata nel dal 2ï¿½ "
 3,  "spinwrap "
 3,  "spinintegerincrement "
 3,  "spindecimalincrement "
