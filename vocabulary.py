@@ -84,10 +84,10 @@ def create_tokens_dictionary(tokens_list):
     return sorteddict
 
 
-def save_to_txt_file(sorted_freq_list):
+def save_to_txt_file(sorted_freq_list, filename = 'sorted_freq_list.txt'):
     n = len(sorted_freq_list)
     errors = 0
-    with open('sorted_freq_list.txt', 'w') as f:
+    with open(filename, 'w') as f:
         f.write(str(n) + "\n")
         for item in sorted_freq_list:
             try:
@@ -102,12 +102,11 @@ def create_vocabulary(path):
     n = len(files_list)  #42000
     randomly_chosen_files = random.choices(files_list, k = int(n/50))
     tokens_list = create_tokens_list_from_filenames_list(randomly_chosen_files)  #25 sec
-    pickle.dump(tokens_list, open("tokens_list.pkl", "wb"))   #1 sec
+    # pickle.dump(tokens_list, open("tokens_list.pkl", "wb"))   #1 sec
 
     # tokens_list2 = pickle.load(open("tokens_list.pkl", "rb"))  #1 sec
     sorted_freq_list = create_tokens_dictionary(tokens_list)  # 10 min
-    #
-    # pickle.dump(sorted_freq_list, open("sorted_freq_list.pkl", "wb"))
+    pickle.dump(sorted_freq_list, open("sorted_freq_list.pkl", "wb"))
 
     # sorted_freq_list2 = pickle.load(open("sorted_freq_list.pkl", "rb"))
     save_to_txt_file(sorted_freq_list)
@@ -124,7 +123,25 @@ def create_vocabulary(path):
     # loaded_vec = CountVectorizer(decode_error="replace", vocabulary=pickle.load(open("feature.pkl", "rb")))
 
     print("done")
+    return sorted_freq_list
+
+def cut_vocabulary(sorted_freq_list, first_n_to_take = 2000, first_n_to_remove = 0, minimum_occurrences = 20):
+    short_sorted_freq_list = []
+    for i in range(len(sorted_freq_list)):
+        if i < first_n_to_remove:
+            continue
+
+        tuple = sorted_freq_list[i]
+        if (i > first_n_to_remove + first_n_to_take) or (tuple[0] < minimum_occurrences):
+            break
+
+        short_sorted_freq_list.append(sorted_freq_list[i])
+
+    pickle.dump(short_sorted_freq_list, open("short_sorted_freq_list.pkl", "wb"))
+    save_to_txt_file(short_sorted_freq_list, 'short_sorted_freq_list.txt')
+    return short_sorted_freq_list
 
 
 path = "D:\\Y-Data\\Proj\\tokenized1"
-create_vocabulary(path)
+sorted_freq_list = create_vocabulary(path)
+cut_vocabulary(sorted_freq_list)
