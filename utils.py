@@ -28,7 +28,7 @@ def get_all_needed_inputs(output_folder, cores_to_use, input_folder, vectorizer,
                                                                                             cores_to_use,
                                                                                             input_folder,
                                                                                             security_keywords,
-                                                                                            min_token_count)
+                                                                                            min_token_count, list_of_tokens)
     # if params.matix_form == '0-1':
     #     assert params.vectorizer == 'count'
     #     bow_matrix[bow_matrix >= 1.] = 1
@@ -51,8 +51,15 @@ def isin(a, b):
     return False
 
 
+def is_in(a,b):
+    for word1 in a:
+        if word1 in b:
+            return True
+    return False
+
+
 def create_functions_list_from_filename(item):
-    (filename, gt, keywords, min_token_count) = item
+    (filename, gt, keywords, min_token_count, list_of_tokens) = item
     try:
         #  engine='python',
         df = pd.read_csv(filename, header=None, encoding='utf8')  #  error_bad_lines=False
@@ -127,7 +134,7 @@ def create_functions_list_from_filename(item):
             gt_values.append(0)
             vulnerabilities.append('')
         filenames.append(filename)
-    ok = [((len(functions_raw[idx].split("\n")) >= min_token_count >-1) or min_token_count == -1) for idx, l in enumerate(functions_list)]
+    ok = [((len(functions_raw[idx].split("\n")) >= min_token_count >-1) or min_token_count == -1) and (list_of_tokens is None or is_in(l.split(" "), list_of_tokens)) for idx, l in enumerate(functions_list)]
     return filter(ok, functions_list), filter(ok,functions_raw), \
            filter(ok,gt_values), "", filter(ok,filenames), filter(ok,vulnerabilities), filter(ok, list(raw_start.values[:, 2]))
 
@@ -146,7 +153,7 @@ def filter(ok, array):
     return [b for a,b in zip(ok, array) if a]
 
 
-def create_functions_list_from_filenames_list(files_list, output_folder, core_count, input_folder, security_keywords=None, min_token_count=-1):
+def create_functions_list_from_filenames_list(files_list, output_folder, core_count, input_folder, security_keywords=None, min_token_count=-1, list_of_tokens=None):
     functions_list = []
     raw_list = []
     gt_values = []
@@ -159,14 +166,14 @@ def create_functions_list_from_filenames_list(files_list, output_folder, core_co
         with tqdm(total=sizecounter, unit='files') as pbar:
             if core_count > 1:
                 with multiprocessing.Pool(processes=core_count) as p:
-                    for i, (temp, temp_raw, temp_gt, code, filenames, vulnerabilities, start_raw) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt, security_keywords, min_token_count) for file_name in files_list], chunksize=10))):
+                    for i, (temp, temp_raw, temp_gt, code, filenames, vulnerabilities, start_raw) in (enumerate(p.imap(create_functions_list_from_filename, [(file_name, gt, security_keywords, min_token_count, list_of_tokens) for file_name in files_list], chunksize=10))):
                         functions_list, gt_values, raw_list, filenames_list, all_vulnerabilities, all_start_raw= inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list,
                                                                                          temp, temp_gt, temp_raw, filenames_list,
                                                                                          vulnerabilities, all_vulnerabilities,
                                                                                                              start_raw, all_start_raw)
             else:
                 for i, filename in enumerate(files_list):
-                    temp, temp_raw, temp_gt, code, filenames, vulnerabilities, start_raw = create_functions_list_from_filename((filename, gt, security_keywords, min_token_count))
+                    temp, temp_raw, temp_gt, code, filenames, vulnerabilities, start_raw = create_functions_list_from_filename((filename, gt, security_keywords, min_token_count, list_of_tokens))
                     functions_list, gt_values, raw_list, filenames_list, all_vulnerabilities, all_start_raw = inner_loop(code, f, filenames, functions_list, gt_values, pbar, raw_list,
                                                                                      temp, temp_gt, temp_raw, filenames_list,
                                                                                      vulnerabilities, all_vulnerabilities,
@@ -201,10 +208,10 @@ def get_filenames(mypath):
     return filenames
 
 
-def vectorize_folder(path, limit, vectorizer, output_folder, core_count, input_folder, security_keywords, min_token_count):
+def vectorize_folder(path, limit, vectorizer, output_folder, core_count, input_folder, security_keywords, min_token_count, list_of_tokens):
     files_list = get_filenames(path)
     functions_list, raw_list, gt_values, filenames_list, all_vulnerabilities, all_start_raw = create_functions_list_from_filenames_list(files_list[:limit], output_folder,
-                                                                                                    core_count, input_folder, security_keywords, min_token_count)
+                                                                                                    core_count, input_folder, security_keywords, min_token_count, list_of_tokens)
     vectorizer, bow_matrix = vectorize_text(functions_list, vectorizer)
     return vectorizer, np.array(functions_list), bow_matrix, np.array(raw_list), np.array(gt_values), np.array(filenames_list), np.array(all_vulnerabilities), np.array(all_start_raw)
 

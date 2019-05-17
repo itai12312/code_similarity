@@ -64,7 +64,7 @@ def profile(params):
     pr.print_stats(sort='cumtime')  # cumtime, ncalls
 
 
-# --n_clusters 7 --matrix_form tfidf --vectorizer count --metric euclidean --input_folder ../codes_short/ --files_limit 100 --output_folder result5 --max_features 2000
+#--matrix_form tfidf --vectorizer count --metric euclidean --input_folder ../codes_short/ --files_limit 100 --output_folder result_fixed_vocab_100_picked
 if __name__ == "__main__":
     main()
 

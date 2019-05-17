@@ -41,7 +41,7 @@ def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, filenames, 
     fig = plt.figure(figsize=(150, 70))
     plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
     z = dendrogram(lnk, labels=[f'{idx}_{val}' for idx, val in enumerate(gt_values)],
-                   color_threshold=0.17,
+                   color_threshold=params.color_thresh,
                    orientation='right', leaf_font_size=8, leaf_rotation=0) # , link_color_func=get_color)
     cluster_idxs = defaultdict(list)
     for c, pi in zip(z['color_list'], z['icoord']):
