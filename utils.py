@@ -22,7 +22,7 @@ def get_all_needed_inputs(output_folder, cores_to_use, input_folder, vectorizer,
     print(f'using {cores_to_use} cores')
     mypath = join(input_folder, 'tokenized1')
     vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[vectorizer]
-    vectorizer = vectorizer(max_df=1.0, min_df=2, max_features=max_features, ngram_range=(1, ngram_range), vocabulary=list_of_tokens)
+    vectorizer = vectorizer(max_df=1.0, min_df=1, max_features=max_features, ngram_range=(1, ngram_range), vocabulary=list_of_tokens)
     vectorizer1, lists, bow_matrix, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw = vectorize_folder(mypath, files_limit,
                                                                                             vectorizer, output_folder,
                                                                                             cores_to_use,
@@ -82,7 +82,9 @@ def create_functions_list_from_filename(item):
         return [], [],[],  f'no functions found!', [filename], [], []
     zipped = list(zip(starters.index, enders.index))
     functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped]
-    functions_list = [fl.lower() for fl in functions_list]
+    def filter_alpha(stri):
+        return ''.join(c for c in stri if c.isalnum() or c == ' ')
+    functions_list = [filter_alpha(fl.lower()) for fl in functions_list]
     # # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
     raw_start = df.loc[starters.index+1]
     # raw_end = df.loc[enders.index-1]

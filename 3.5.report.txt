@@ -24,3 +24,9 @@ fix memory limit-crashes on 2000 files(uses more than 20GB RAM)
 אולי מספר הfeatures נמוך מדי, למשל.
 [14:49, 3/5/2019] אדר וידמן: מאד קריטי לקבע את הvocabulary.
 [14:49, 3/5/2019] אדר וידמן: לחשב ידנית כמה מרחקים.
+
+todo:
+make sure counter & tfidf ok(counter-check against vectorizer, and hard functions),
+make sure cosine computation ok(by hand vs string vs by method)
+make sure ...
+take 1000 words instead of 300

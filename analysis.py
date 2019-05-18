@@ -9,17 +9,11 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import confusion_matrix
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
+import sklearn
+import scipy
 
-
-def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, filenames, all_vulnerabilities, all_start_raw):
+def analyze_functions2(matrix, lists, raw_lists, params, gt_values, filenames, all_vulnerabilities, all_start_raw):
     # vocab = list(vectorizer.vocabulary_.keys())
-    if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
-        matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
-    elif params.vectorizer == 'count' and params.matrix_form == '0-1':
-        matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
-        matrix[matrix >= 1.] = 1
-    else:
-        matrix = matrix1.toarray()
     # distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
     # fig = plt.figure(figsize=(25, 10))
     distances = pdist(matrix, metric=params.metric)
