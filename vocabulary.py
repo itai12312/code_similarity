@@ -92,7 +92,7 @@ def save_to_txt_file(sorted_freq_list, filename = 'sorted_freq_list.txt'):
     n = len(sorted_freq_list)
     errors = 0
     with open(filename, 'w') as f:
-        f.write("frequency,name")
+        f.write("frequency,name\n")
         #f.write(str(n) + "\n")
         for item in sorted_freq_list:
             try:
