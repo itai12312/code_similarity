@@ -32,9 +32,9 @@ def main_(params):
     # can be called using dictobj.DictionaryObject({'metric': 'euclidean'}) or
     # str_to_params('--output_folder result3 --metric euclidean --input_folder ../codes_short/ --files_limit 100 --max_features 2000')
     # for construction of params object
-    tokens = pd.read_csv('sorted_freq_list.txt')
+    tokens = pd.read_csv('short_sorted_freq_list.txt')
     list_of_tokens = tokens['name'].values[:params.select_top_tokens]
-    list_of_tokens = sorted([stri.strip().lower() for stri in list_of_tokens])
+    list_of_tokens = sorted([stri.strip().lower() for stri in list_of_tokens if isinstance(stri, str)])
     bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
         get_all_needed_inputs_params(params, list_of_tokens)
 

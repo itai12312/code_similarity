@@ -211,6 +211,7 @@ def vectorize_text(text, vectorizer):
 
 
 def get_filenames(mypath):
+    mypath = os.path.join(mypath, 'tokenized1')
     filenames = [join(mypath, f) for f in os.listdir(mypath) if isfile(join(mypath, f))]
     return filenames
 
