@@ -35,7 +35,7 @@ def create_vectors_(params):
     # for construction of params object
     tokens = pd.read_csv('short_sorted_freq_list.txt')
     list_of_tokens = tokens['name'].values[:params.select_top_tokens]
-    list_of_tokens = sorted([stri.strip().lower() for stri in list_of_tokens])
+    list_of_tokens = sorted([str(stri).strip().lower() for stri in list_of_tokens])
     bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
         get_all_needed_inputs_params(params, list_of_tokens)
     
