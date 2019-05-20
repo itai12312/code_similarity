@@ -16,7 +16,7 @@ def get_parser():
     parser.add_argument('--profiler', action="store_true", dest="profiler", default=False)  # type=lambda x:x.lower in ['true', '1', 'y']
 
     parser.add_argument('--num_features', action="store", dest="num_features", type=int, default=None)
-    parser.add_argument('--select_top_tokens', action="store", dest="select_top_tokens", type=int, default=300)
+    parser.add_argument('--select_top_tokens', action="store", dest="select_top_tokens", type=int, default=3000)
     parser.add_argument('--ngram_range', action="store", dest="ngram_range", type=int, default=1)
     # parser.add_argument('--n_clusters', action="store", dest="n_clusters", type=int, default=7)
     # parser.add_argument('--n_topics', action="store", dest="n_topics", type=int, default=20)
