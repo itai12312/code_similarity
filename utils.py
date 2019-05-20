@@ -20,7 +20,8 @@ def get_all_needed_inputs(output_folder, cores_to_use, input_folder, vectorizer,
     if cores_to_use == -1:
         cores_to_use = multiprocessing.cpu_count()
     print(f'using {cores_to_use} cores')
-    mypath = join(input_folder, 'tokenized1')
+    #mypath = join(input_folder, 'tokenized1')
+    mypath = input_folder
     vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[vectorizer]
     vectorizer = vectorizer(max_df=1.0, min_df=1, max_features=max_features, ngram_range=(1, ngram_range), vocabulary=list_of_tokens)
     vectorizer1, lists, bow_matrix, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw = vectorize_folder(mypath, files_limit,
@@ -63,11 +64,9 @@ def create_functions_list_from_filename(item):
     try:
         #  engine='python',
         df = pd.read_csv(filename, header=None, encoding='utf8')  #  error_bad_lines=False
-        with open(filename.replace("/tokenized1{0}".format(os.sep),
-                                   "/c_sharp_code{0}".format(os.sep)).replace(".tree-viewer.txt", "")) as f:
+        with open(filename.replace("tokenized1","c_sharp_code").replace(".tree-viewer.txt", "")) as f:
             data = f.read().splitlines()
     except Exception as e:
-        # print(filename, e)
         return [],[],[], f'{e}', [filename], [], []
     original_df = copy.deepcopy(df)
     df = df[df[0].notnull()]
@@ -112,7 +111,7 @@ def create_functions_list_from_filename(item):
     functions_raw = [('\n'.join(data[int(begin):int(end)] if real_curs[idx] > -1 else data[int(begin):]))
                       for idx, (begin, end) in enumerate(raw_ranges)]
     if '\\' in filename:
-        separting_string = '/tokenized1\\'
+        separting_string = '\\tokenized1\\'
     else:
         separting_string = '/tokenized1/'
     rootpath, realfilename = filename.split(separting_string)  # parse.parse(f'{{}}{os.sep}tokenized1{os.sep}{{}}', filename)
@@ -181,6 +180,11 @@ def create_functions_list_from_filenames_list(files_list, output_folder, core_co
                                                                                      vulnerabilities, all_vulnerabilities,
                                                                                                           start_raw,
                                                                                                           all_start_raw)
+                    
+                    
+                    #for j, function in enumerate(functions_list):
+                    #    print(filename, j)
+    
     return functions_list, raw_list, gt_values, filenames_list, all_vulnerabilities, all_start_raw
 
 
@@ -202,6 +206,7 @@ def inner_loop(error_code, f, filenames, functions_list, gt_values, pbar, raw_li
 
 def vectorize_text(text, vectorizer):
     bow_matrix = vectorizer.fit_transform(text)
+
     return vectorizer, bow_matrix
 
 
@@ -215,6 +220,7 @@ def vectorize_folder(path, limit, vectorizer, output_folder, core_count, input_f
     functions_list, raw_list, gt_values, filenames_list, all_vulnerabilities, all_start_raw = create_functions_list_from_filenames_list(files_list[:limit], output_folder,
                                                                                                     core_count, input_folder, security_keywords, min_token_count, list_of_tokens)
     vectorizer, bow_matrix = vectorize_text(functions_list, vectorizer)
+
     return vectorizer, np.array(functions_list), bow_matrix, np.array(raw_list), np.array(gt_values), np.array(filenames_list), np.array(all_vulnerabilities), np.array(all_start_raw)
 
 
