@@ -13,9 +13,9 @@ path = "D:\\Y-Data\\Proj\\tokenized1"
 
 ## I'm commenting all parts that already run in the past, in order to make them run again - uncomment them
 
-sorted_freq_list = create_vocabulary(path = "D:\\Y-Data\\Proj\\tokenized1", percentage = 0.1)
-clean_freq_list = clean_vocabulary(sorted_freq_list) # ideally this one should use a file and not the return value
-freq_list = cut_vocabulary(clean_freq_list) # ideally this one should use a file and not the return value
+#sorted_freq_list = create_vocabulary(path = "D:\\Y-Data\\Proj\\tokenized1", percentage = 0.1)
+#clean_freq_list = clean_vocabulary(sorted_freq_list) # ideally this one should use a file and not the return value
+#freq_list = cut_vocabulary(clean_freq_list) # ideally this one should use a file and not the return value
 
 freq_list = pickle.load(open("short_sorted_freq_list.pkl", "rb"))
 
