@@ -3,6 +3,8 @@ from os.path import join, isfile
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer
 import pickle
+import re
+
 
 import os
 
@@ -97,10 +99,10 @@ def save_to_txt_file(sorted_freq_list, filename = 'sorted_freq_list.txt'):
     return errors
 
 
-def create_vocabulary(path):
+def create_vocabulary(path, percentage = 0.02):
     files_list = get_filenames(path)
     n = len(files_list)  #42000
-    randomly_chosen_files = random.choices(files_list, k = int(n/50))
+    randomly_chosen_files = random.choices(files_list, k = int(n * percentage))
     tokens_list = create_tokens_list_from_filenames_list(randomly_chosen_files)  #25 sec
     # pickle.dump(tokens_list, open("tokens_list.pkl", "wb"))   #1 sec
 
@@ -125,6 +127,7 @@ def create_vocabulary(path):
     print("done")
     return sorted_freq_list
 
+
 def cut_vocabulary(sorted_freq_list, first_n_to_take = 2000, first_n_to_remove = 0, minimum_occurrences = 20):
     short_sorted_freq_list = []
     for i in range(len(sorted_freq_list)):
@@ -135,13 +138,32 @@ def cut_vocabulary(sorted_freq_list, first_n_to_take = 2000, first_n_to_remove =
         if (i > first_n_to_remove + first_n_to_take) or (tuple[0] < minimum_occurrences):
             break
 
-        short_sorted_freq_list.append(sorted_freq_list[i])
+        short_sorted_freq_list.append(tuple)
 
     pickle.dump(short_sorted_freq_list, open("short_sorted_freq_list.pkl", "wb"))
     save_to_txt_file(short_sorted_freq_list, 'short_sorted_freq_list.txt')
     return short_sorted_freq_list
 
 
+def clean_vocabulary(sorted_freq_list):
+    clean_sorted_freq_list = []
+    for i in range(len(sorted_freq_list)):
+        tuple = sorted_freq_list[i]
+        token_name = tuple[1]
+        x = re.search("^[\w_]+\d*$", token_name)
+        if (x == None):
+            print(token_name)
+            continue
+
+        clean_sorted_freq_list.append(tuple)
+
+    pickle.dump(clean_sorted_freq_list, open("clean_sorted_freq_list.pkl", "wb"))
+    save_to_txt_file(clean_sorted_freq_list, 'clean_sorted_freq_list.txt')
+    return clean_sorted_freq_list
+
+
 path = "D:\\Y-Data\\Proj\\tokenized1"
-sorted_freq_list = create_vocabulary(path)
+
+sorted_freq_list = create_vocabulary(path, 0.1)
+clean_vocabulary(sorted_freq_list)
 cut_vocabulary(sorted_freq_list)
