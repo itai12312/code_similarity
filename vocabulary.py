@@ -65,10 +65,12 @@ def wordListToFreqDict(wordlist):
 def count_occurrences(wordlist, uniqueWordList):
     i = 0
     wordfreq = []
+    cnt = len(uniqueWordList)
     for p in uniqueWordList:
         occurrences = wordlist.count(p)
         wordfreq.append(occurrences)
-        print(i)
+        if (i%100 == 0):
+            print(i/cnt*100, "%  - ", i, "of", cnt)
         i+=1
     return wordfreq
 
@@ -90,10 +92,11 @@ def save_to_txt_file(sorted_freq_list, filename = 'sorted_freq_list.txt'):
     n = len(sorted_freq_list)
     errors = 0
     with open(filename, 'w') as f:
-        f.write(str(n) + "\n")
+        f.write("frequency,name")
+        #f.write(str(n) + "\n")
         for item in sorted_freq_list:
             try:
-                f.write(str(item[0]) + ", " + item[1] + "\n")
+                f.write(str(item[0]) + "," + item[1] + "\n")
             except:
                 errors += 1
     return errors
@@ -150,7 +153,7 @@ def clean_vocabulary(sorted_freq_list):
     for i in range(len(sorted_freq_list)):
         tuple = sorted_freq_list[i]
         token_name = tuple[1]
-        x = re.search("^[\w_]+\d*$", token_name)
+        x = re.search("^[a-zA-Z_]+\d*$", token_name)
         if (x == None):
             print(token_name)
             continue
@@ -161,9 +164,10 @@ def clean_vocabulary(sorted_freq_list):
     save_to_txt_file(clean_sorted_freq_list, 'clean_sorted_freq_list.txt')
     return clean_sorted_freq_list
 
-
+"""
 path = "D:\\Y-Data\\Proj\\tokenized1"
 
 sorted_freq_list = create_vocabulary(path, 0.1)
 clean_vocabulary(sorted_freq_list)
 cut_vocabulary(sorted_freq_list)
+"""
