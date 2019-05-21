@@ -6,7 +6,7 @@ import numpy as np
 
 from analysis import analyze_functions2
 from parser_utils import str_to_params
-from utils import get_all_needed_inputs
+from utils import get_vectors
 from tqdm import tqdm, trange
 import pandas as pd
 import sys
@@ -35,18 +35,14 @@ def main_(params):
     tokens = pd.read_csv('short_sorted_freq_list.txt')
     list_of_tokens = tokens['name'].values[:params.select_top_tokens]
     list_of_tokens = sorted([stri.strip().lower() for stri in list_of_tokens if isinstance(stri, str)])
-    bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
-        get_all_needed_inputs_params(params, list_of_tokens)
+    if not os.path.exists(os.path.join(params.output_folder, 'vectors.numpy_savez')):
+        bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
+            get_all_needed_inputs_params(params, list_of_tokens)
 
     assert sum([1 for c in lists[0].split(" ") if c == list_of_tokens[0]]) == bow_matrix.toarray()[0][0]
     # intersting_indices = analyze_functions(bow_matrix, METRIC_FUNCTIONS[params.metric], lists, raw_lists,
     #                   vocab, params, gt_values)
     # to access metrics directly, look in scipy.spatial.distance
-    with open(os.path.join(params.output_folder, 'dump_results.numpy_savez'), 'wb+') as f:
-        np.savez(f, bow_matrix=bow_matrix, lists=lists,
-                 raw_lists=raw_lists, gt_values=gt_values,
-                 filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
-                 all_start_raw=all_start_raw)
     intersting_indices = np.array(list(range(len(lists))))
 
     if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
@@ -76,9 +72,9 @@ def main_(params):
 
 
 def get_all_needed_inputs_params(params, list_of_tokens):
-    return get_all_needed_inputs(params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
-                                 params.max_features, params.ngram_range, params.files_limit,
-                                 params.security_keywords, params.min_token_count, list_of_tokens)
+    return get_vectors(params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
+                       params.max_features, params.ngram_range, params.files_limit,
+                       params.security_keywords, params.min_token_count, list_of_tokens)
 
 
 def profile(params):

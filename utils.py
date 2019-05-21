@@ -12,9 +12,9 @@ from tqdm import tqdm, trange
 import numpy as np
 
 
-def get_all_needed_inputs(output_folder, cores_to_use, input_folder, vectorizer,
-                          max_features, ngram_range=1, files_limit=100, security_keywords=None,
-                          min_token_count=-1, list_of_tokens=None):
+def get_vectors(output_folder, cores_to_use, input_folder, vectorizer,
+                max_features, ngram_range=1, files_limit=100, security_keywords=None,
+                min_token_count=-1, list_of_tokens=None):
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
     if cores_to_use == -1:
@@ -30,13 +30,11 @@ def get_all_needed_inputs(output_folder, cores_to_use, input_folder, vectorizer,
                                                                                             input_folder,
                                                                                             security_keywords,
                                                                                             min_token_count, list_of_tokens)
-    # if params.matix_form == '0-1':
-    #     assert params.vectorizer == 'count'
-    #     bow_matrix[bow_matrix >= 1.] = 1
-    #     # bow_matrix[bow_matrix == 0.] = 0
-    #     # bow_matrix = bow_matrix.astype(int)
-    # elif params.matix_form == 'tf-idf':
-    #     bow_matrix = bow_matrix * 1. / bow_matrix.sum(axis=1)[:, None]
+    with open(os.path.join(output_folder, 'dump_vectors.numpy_savez'), 'wb+') as f:
+        np.savez(f, bow_matrix=bow_matrix, lists=lists,
+                 raw_lists=raw_lists, gt_values=gt_values,
+                 filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
+                 all_start_raw=all_start_raw, voacb=vectorizer1.vocabulary)
     return bow_matrix, gt_values, lists, raw_lists, vectorizer1, filenames_list, all_vulnerabilities, all_start_raw
 
 
