@@ -20,7 +20,6 @@ def get_vectors(output_folder, cores_to_use, input_folder, vectorizer,
     if cores_to_use == -1:
         cores_to_use = multiprocessing.cpu_count()
     print(f'using {cores_to_use} cores')
-    #mypath = join(input_folder, 'tokenized1')
     mypath = input_folder
     vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[vectorizer]
     vectorizer = vectorizer(max_df=1.0, min_df=1, max_features=max_features, ngram_range=(1, ngram_range), vocabulary=list_of_tokens)
@@ -30,11 +29,11 @@ def get_vectors(output_folder, cores_to_use, input_folder, vectorizer,
                                                                                             input_folder,
                                                                                             security_keywords,
                                                                                             min_token_count, list_of_tokens)
-    with open(os.path.join(output_folder, 'dump_vectors.numpy_savez'), 'wb+') as f:
-        np.savez(f, bow_matrix=bow_matrix, lists=lists,
-                 raw_lists=raw_lists, gt_values=gt_values,
-                 filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
-                 all_start_raw=all_start_raw, voacb=vectorizer1.vocabulary)
+    np.savez(os.path.join(output_folder, 'vectors.npz'), bow_matrix=bow_matrix, lists=lists,
+             raw_lists=raw_lists, gt_values=gt_values,
+             filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
+             all_start_raw=all_start_raw, voacb=vectorizer1.vocabulary)
+    assert sum([1 for c in lists[0].split(" ") if c == list_of_tokens[0]]) == bow_matrix.toarray()[0][0]
     return bow_matrix, gt_values, lists, raw_lists, vectorizer1, filenames_list, all_vulnerabilities, all_start_raw
 
 
