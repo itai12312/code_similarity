@@ -9,17 +9,11 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import confusion_matrix
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import train_test_split
+import sklearn
+import scipy
 
-
-def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, vectorizer, filenames, all_vulnerabilities, all_start_raw):
+def analyze_functions2(matrix, lists, raw_lists, params, gt_values, filenames, all_vulnerabilities, all_start_raw):
     # vocab = list(vectorizer.vocabulary_.keys())
-    if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
-        matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
-    elif params.vectorizer == 'count' and params.matrix_form == '0-1':
-        matrix = matrix1.toarray() * 1. / matrix1.toarray().sum(axis=1)[:, None]
-        matrix[matrix >= 1.] = 1
-    else:
-        matrix = matrix1.toarray()
     # distances = sklearn.metrics.pairwise_distances(matrix.toarray(), metric=params.metric)
     # fig = plt.figure(figsize=(25, 10))
     distances = pdist(matrix, metric=params.metric)
@@ -41,7 +35,7 @@ def analyze_functions2(matrix1, lists, raw_lists, params, gt_values, vectorizer,
     fig = plt.figure(figsize=(150, 70))
     plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
     z = dendrogram(lnk, labels=[f'{idx}_{val}' for idx, val in enumerate(gt_values)],
-                   color_threshold=0.17,
+                   color_threshold=params.color_thresh,
                    orientation='right', leaf_font_size=8, leaf_rotation=0) # , link_color_func=get_color)
     cluster_idxs = defaultdict(list)
     for c, pi in zip(z['color_list'], z['icoord']):
