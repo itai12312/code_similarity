@@ -6,7 +6,7 @@ import numpy as np
 
 from analysis import analyze_functions2
 from parser_utils import str_to_params
-from utils import get_all_needed_inputs
+from utils import get_vectors
 from tqdm import tqdm, trange
 import pandas as pd
 import sys
@@ -77,9 +77,9 @@ def create_vectors_(params):
 
 
 def get_all_needed_inputs_params(params, list_of_tokens):
-    return get_all_needed_inputs(params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
-                                 params.max_features, params.ngram_range, params.files_limit,
-                                 params.security_keywords, params.min_token_count, list_of_tokens)
+    return get_vectors(params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
+                       params.max_features, params.ngram_range, params.files_limit,
+                       params.security_keywords, params.min_token_count, list_of_tokens)
 
 
 def profile(params):
