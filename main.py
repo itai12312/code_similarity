@@ -6,7 +6,7 @@ import numpy as np
 
 from analysis import analyze_functions2
 from parser_utils import str_to_params
-from utils import get_vectors
+from utils import get_vectors, is_in
 from tqdm import tqdm, trange
 import pandas as pd
 import sys
@@ -34,36 +34,46 @@ def main_(params):
     # str_to_params('--output_folder result3 --metric euclidean --input_folder ../codes_short/ --files_limit 100 --max_features 2000')
     # for construction of params object
     list_of_tokens = get_vocab(params.select_top_tokens, 'short_sorted_freq_list.txt')
+
+    vector_path = join(params.output_folder, 'vectors.npz')
+    tfidf_path = join(params.output_folder, 'tfidf.npz')
+    distances_path = join(params.output_folder, 'distances.npz')
     
-    if 'vectors' in params.stages_to_run:
+    if 'vectors' in params.stages_to_run or (not os.path.exists(vector_path) and is_in(['tfidf', 'distances', 'clustering'], params.stages_to_run)):
         bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
             get_all_needed_inputs_params(params, list_of_tokens)
         vocab = vectorizer.vocabulary
-        
-    if 'tfidf' in params.stages_to_run:
+
+    if 'tfidf' in params.stages_to_run or (not os.path.exists(tfidf_path) and is_in(['distances', 'clustering'], params.stages_to_run)):
         if 'vectors' not in params.stages_to_run:
-            data = np.load(join(params.output_folder, 'vectors.npz'))
-            bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw, vocab = data
+            data = load_vectors(vector_path)
+            bow_matrix, lists, raw_lists, gt_values, filenames_list,\
+                all_vulnerabilities, all_start_raw, vocab = data
         # intersting_indices = np.array(list(range(len(lists))))
+        # if scipy.sparse.issparse(bow_matrix):
+        #    matrix = bow_matrix.toarray()
         if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
             matrix = count_to_tfidf(bow_matrix)
-        else:
-            matrix = bow_matrix.toarray()
-        np.savez(join(params.output_folder, 'tfidf.npz'), matrix=matrix)
+        np.savez(tfidf_path, matrix=matrix)
     
-    if 'distances' in params.stages_to_run:
+    if 'distances' in params.stages_to_run or (not os.path.exists(distances_path) and is_in(['clustering'], params.stages_to_run)):
         if 'tfidf' not in params.stages_to_run:
-            matrix = np.load(join(params.output_folder, 'tfidf.npz'))
+            matrix = np.load(tfidf_path)['matrix']
         distances = pdist(matrix, metric=params.metric)
-        np.savez(join(params.output_folder, 'distances.npz'), distances)
+        np.savez(distances_path, distances=distances)
     
     if 'clustering' in params.stages_to_run:
         if 'distances' not in params.stages_to_run:
-            distances = np.load(join(params.output_folder, 'distances.npz'))
-        
+            distances = np.load(distances_path)['distances']
         analyze_functions2(distances, matrix, lists, raw_lists,
                            params, gt_values, filenames_list,
                            all_vulnerabilities, all_start_raw)
+
+
+def load_vectors(vector_path):
+    data = np.load(vector_path)
+    data = [data[att] for att in data.files]
+    return data
 
 
 def count_to_tfidf(bow_matrix):
@@ -73,8 +83,8 @@ def count_to_tfidf(bow_matrix):
     #     get_all_needed_inputs_params(new_params, list_of_tokens)
     c = copy.deepcopy(bow_matrix)
     c[c >= 1] = 1
-    c = np.tile(np.sum(c.toarray(), axis=0), (bow_matrix.shape[0], 1))
-    matrix = bow_matrix.toarray() * 1. / bow_matrix.toarray().sum(axis=1)[:, None]
+    c = np.tile(np.sum(c, axis=0), (bow_matrix.shape[0], 1))
+    matrix = bow_matrix * 1. / bow_matrix.sum(axis=1)[:, None]
     matrix2 = matrix * (1 + np.log((matrix.shape[0] + 1) / (1 + c)))
     matrix2 = sklearn.preprocessing.data.normalize(matrix2, norm='l2', copy=False)
     matrix = matrix2
@@ -84,7 +94,7 @@ def count_to_tfidf(bow_matrix):
 def get_vocab(select_top_tokens, path):
     tokens = pd.read_csv(path)
     list_of_tokens = tokens['name'].values[:select_top_tokens]
-    list_of_tokens = sorted([stri.strip().lower() for stri in list_of_tokens if isinstance(stri, str)])
+    list_of_tokens = [stri.strip().lower() for stri in list_of_tokens if isinstance(stri, str)]
     return list_of_tokens
 
 

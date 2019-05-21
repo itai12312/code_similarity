@@ -33,6 +33,7 @@ def get_parser():
     parser.add_argument('--color_thresh', action="store", dest="color_thresh", type=float, default=0.115)
     # pass with spaces between arguments, eg --security_keywords xss sql injection
     parser.add_argument('--security_keywords', action="store", dest="security_keywords", nargs='*', default=None)
+    # --stages_to_run vectors tfidf distances clustering
     parser.add_argument('--stages_to_run', action="store", dest="stages_to_run", nargs='*', default=['vectors', 'tfidf', 'distances', 'clustering'])
     return parser
 

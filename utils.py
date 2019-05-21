@@ -29,11 +29,13 @@ def get_vectors(output_folder, cores_to_use, input_folder, vectorizer,
                                                                                             input_folder,
                                                                                             security_keywords,
                                                                                             min_token_count, list_of_tokens)
+    bow_matrix = bow_matrix.toarray()
     np.savez(os.path.join(output_folder, 'vectors.npz'), bow_matrix=bow_matrix, lists=lists,
              raw_lists=raw_lists, gt_values=gt_values,
              filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
              all_start_raw=all_start_raw, voacb=vectorizer1.vocabulary)
-    assert sum([1 for c in lists[0].split(" ") if c == list_of_tokens[0]]) == bow_matrix.toarray()[0][0]
+    for i, token in enumerate(list_of_tokens):
+        assert sum([1 for c in lists[0].split(" ") if c == token]) == bow_matrix[0][i]
     return bow_matrix, gt_values, lists, raw_lists, vectorizer1, filenames_list, all_vulnerabilities, all_start_raw
 
 
@@ -79,7 +81,8 @@ def create_functions_list_from_filename(item):
     zipped = list(zip(starters.index, enders.index))
     functions_list = [df[0].iloc[begin:end+1].str.cat(sep=' ') for begin, end in zipped]
     def filter_alpha(stri):
-        return ''.join(c for c in stri if c.isalnum() or c == ' ')
+        ret = ''.join(c for c in stri if c.isalnum() or c in [' ', '_', '-'])
+        return ' '.join(ret.split())
     functions_list = [filter_alpha(fl.lower()) for fl in functions_list]
     # # functions_list = [function for function in functions_list if len(function.replace("\n", "")) > 0]
     raw_start = df.loc[starters.index+1]
