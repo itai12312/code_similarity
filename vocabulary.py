@@ -1,3 +1,4 @@
+import csv
 import random
 from os.path import join, isfile
 import pandas as pd
@@ -164,10 +165,51 @@ def clean_vocabulary(sorted_freq_list):
     save_to_txt_file(clean_sorted_freq_list, 'clean_sorted_freq_list.txt')
     return clean_sorted_freq_list
 
-"""
+
+def get_vocabulary_from_pickle(pkl_filename):
+    tuples = pickle.load(open(pkl_filename, "rb"))
+    vocabulary = [tup[1] for tup in tuples]
+    return vocabulary
+
+def change_file_contents(filename, vocabulary):
+    output_filename = filename.replace('tokenized', 'tokenized_clean')
+    if os.path.exists(output_filename):
+        return
+
+    df = pd.read_csv(filename, header = None, encoding='utf8', error_bad_lines=False, quoting=csv.QUOTE_NONE)
+    df = df[df[0].notnull()]
+    if len(df.index) < 2:
+        return
+    df = df[df[0].str.lower().isin(vocabulary)]
+
+    outdir = os.path.dirname(output_filename)
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
+    df.to_csv(output_filename, header=None, index=None, sep=',')
+
+
+def clean_files(path, vocabulary):
+    '''
+    to use clean_files function:
+    1. first load a vocabulary from a pkl file
+    (i used clean_sorted_freq_list.pkl)
+    2. run the function with 2 arguments:
+    the folder path - tokenized1 or tokenized2, and the vocabulary
+
+    the function creates a new folder - tokenized_clean with the new txt files
+    '''
+    files_list = get_filenames(path)
+    for i, file in enumerate(files_list):
+        change_file_contents(file, vocabulary)
+
+
 path = "D:\\Y-Data\\Proj\\tokenized1"
 
+"""
 sorted_freq_list = create_vocabulary(path, 0.1)
 clean_vocabulary(sorted_freq_list)
 cut_vocabulary(sorted_freq_list)
 """
+
+vocabulary = get_vocabulary_from_pickle("D:\Y-Data\Proj\git\code_similarity\clean_sorted_freq_list.pkl")
+clean_files(path, vocabulary)
