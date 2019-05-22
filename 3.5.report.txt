@@ -36,3 +36,6 @@ create_vectors_for_methods() #create a vectors file including file name, functio
 normalize_vectors() # into a new file
 create_distance_matrix() #into a new file
 cluster_methods(minimal_cluster = 20) # into a set of files - each file for cluster (do not create file for clusters of less than 20 methods)
+
+
+get ready for run on google cloud, set up machine ,etc

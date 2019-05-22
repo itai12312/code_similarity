@@ -3,7 +3,7 @@ import sklearn
 from scipy.spatial.distance import squareform, pdist
 import os
 import numpy as np
-
+import subprocess
 from analysis import analyze_functions2
 from parser_utils import str_to_params
 from utils import get_vectors, is_in
@@ -28,6 +28,12 @@ def main(args=None):
     else:
         main_(params)
 
+def upload_to_gcp(params):
+    if params.gcp_bucket is not None:
+        folder = params.output_path
+        if folder[-1] != os.sep:
+            folder = folder+os.sep
+        subprocess.check_output(f"gsutil -m cp {folder}*.svg {folder}*.txt {folder}*.npz gs://{params.gcp_bucket}/{folder}", shell=True)
 
 def main_(params):
     # can be called using dictobj.DictionaryObject({'metric': 'euclidean'}) or
@@ -43,6 +49,7 @@ def main_(params):
         bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
             get_all_needed_inputs_params(params, list_of_tokens)
         vocab = vectorizer.vocabulary
+        upload_to_gcp(params)
 
     if 'tfidf' in params.stages_to_run or (not os.path.exists(tfidf_path) and is_in(['distances', 'clustering'], params.stages_to_run)):
         if 'vectors' not in params.stages_to_run:
@@ -55,12 +62,14 @@ def main_(params):
         if params.vectorizer == 'count' and params.matrix_form == 'tfidf':
             matrix = count_to_tfidf(bow_matrix)
         np.savez(tfidf_path, matrix=matrix)
+        upload_to_gcp(params)
     
     if 'distances' in params.stages_to_run or (not os.path.exists(distances_path) and is_in(['clustering'], params.stages_to_run)):
         if 'tfidf' not in params.stages_to_run:
             matrix = np.load(tfidf_path)['matrix']
         distances = pdist(matrix, metric=params.metric)
         np.savez(distances_path, distances=distances)
+        upload_to_gcp(params)
     
     if 'clustering' in params.stages_to_run:
         if 'distances' not in params.stages_to_run:
@@ -68,6 +77,10 @@ def main_(params):
         analyze_functions2(distances, matrix, lists, raw_lists,
                            params, gt_values, filenames_list,
                            all_vulnerabilities, all_start_raw)
+        upload_to_gcp(params)
+
+    if params.shutdown:
+        subprocess.run('sudo shutdown', shell=True) # sudo shutdown 0 on aws machines
 
 
 def load_vectors(vector_path):
