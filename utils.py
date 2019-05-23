@@ -12,7 +12,7 @@ from tqdm import tqdm, trange
 import numpy as np
 
 
-def get_vectors(output_folder, cores_to_use, input_folder, vectorizer,
+def get_vectors(params, output_folder, cores_to_use, input_folder, vectorizer,
                 max_features, ngram_range=1, files_limit=100, security_keywords=None,
                 min_token_count=-1, list_of_tokens=None):
     if not os.path.exists(output_folder):
@@ -23,7 +23,7 @@ def get_vectors(output_folder, cores_to_use, input_folder, vectorizer,
     mypath = input_folder
     vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[vectorizer]
     vectorizer = vectorizer(max_df=1.0, min_df=1, max_features=max_features, ngram_range=(1, ngram_range), vocabulary=list_of_tokens)
-    vectorizer1, lists, bow_matrix, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw = vectorize_folder(mypath, files_limit,
+    vectorizer1, lists, bow_matrix, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw = vectorize_folder(mypath, params,
                                                                                             vectorizer, output_folder,
                                                                                             cores_to_use,
                                                                                             input_folder,
@@ -216,9 +216,9 @@ def get_filenames(mypath):
     return filenames
 
 
-def vectorize_folder(path, limit, vectorizer, output_folder, core_count, input_folder, security_keywords, min_token_count, list_of_tokens):
+def vectorize_folder(path, params, vectorizer, output_folder, core_count, input_folder, security_keywords, min_token_count, list_of_tokens):
     files_list = get_filenames(path)
-    functions_list, raw_list, gt_values, filenames_list, all_vulnerabilities, all_start_raw = create_functions_list_from_filenames_list(files_list[:limit], output_folder,
+    functions_list, raw_list, gt_values, filenames_list, all_vulnerabilities, all_start_raw = create_functions_list_from_filenames_list(files_list[params.files_limit_start:params.files_limit_end], output_folder,
                                                                                                     core_count, input_folder, security_keywords, min_token_count, list_of_tokens)
     vectorizer, bow_matrix = vectorize_text(functions_list, vectorizer)
 

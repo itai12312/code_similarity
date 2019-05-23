@@ -45,11 +45,20 @@ def main_(params):
     tfidf_path = join(params.output_folder, 'tfidf.npz')
     distances_path = join(params.output_folder, 'distances.npz')
     
+    s = params.files_limit_start
+    e = params.files_limit_end
+    
     if 'vectors' in params.stages_to_run or (not os.path.exists(vector_path) and is_in(['tfidf', 'distances', 'clustering'], params.stages_to_run)):
-        bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
+        count = s
+        while count < e:
+            params.files_limit_start = count
+            # bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
             get_all_needed_inputs_params(params, list_of_tokens)
-        vocab = vectorizer.vocabulary
-        upload_to_gcp(params)
+            # vocab = vectorizer.vocabulary
+            upload_to_gcp(params)
+            count += params.files_limit_step
+
+        all_start_raw, all_vulnerabilities, bow_matrix, filenames_list, gt_values, lists, raw_lists = dump_vectors_iter(e, s, vector_path)
 
     if 'tfidf' in params.stages_to_run or (not os.path.exists(tfidf_path) and is_in(['distances', 'clustering'], params.stages_to_run)):
         if 'vectors' not in params.stages_to_run:
@@ -83,6 +92,27 @@ def main_(params):
         subprocess.run('sudo shutdown', shell=True) # sudo shutdown 0 on aws machines
 
 
+def dump_vectors_iter(e, s, vector_path):
+    count = 0
+    while count < e:
+        if count == s:
+            bow_matrix, lists, raw_lists, gt_values, filenames_list, \
+            all_vulnerabilities, all_start_raw, vocab = load_vectors(vector_path + str(count))
+        else:
+            temp_bow_matrix, temp_lists, temp_raw_lists, temp_gt_values, temp_filenames_list, \
+            temp_all_vulnerabilities, temp_all_start_raw, temp_vocab = load_vectors(vector_path + str(count))
+            
+            bow_matrix += temp_bow_matrix
+            lists += temp_lists
+            raw_lists += temp_raw_lists
+            gt_values += temp_gt_values
+            filenames_list += temp_filenames_list
+            all_vulnerabilities += temp_all_vulnerabilities
+            all_start_raw += temp_all_start_raw
+            assert vocab == temp_vocab
+    return all_start_raw, all_vulnerabilities, bow_matrix, filenames_list, gt_values, lists, raw_lists
+
+
 def load_vectors(vector_path):
     data = np.load(vector_path)
     data = [data[att] for att in data.files]
@@ -112,7 +142,7 @@ def get_vocab(select_top_tokens, path):
 
 
 def get_all_needed_inputs_params(params, list_of_tokens):
-    return get_vectors(params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
+    return get_vectors(params, params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
                        params.max_features, params.ngram_range, params.files_limit,
                        params.security_keywords, params.min_token_count, list_of_tokens)
 

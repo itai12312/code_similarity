@@ -11,7 +11,11 @@ def get_parser():
     parser.add_argument('--clustering_method', action="store", dest="clustering_method", help="single complete average ward weighted centroid median", default="average")
     parser.add_argument('--matrix_form', action="store", dest="matrix_form", help="0-1 or tf-idf or none", default="none")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=None)
-    parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=100)
+    
+    parser.add_argument('--files_limit_start', action="store", dest="files_limit_start", type=int, default=0)
+    parser.add_argument('--files_limit_end', action="store", dest="files_limit_end", type=int, default=100)
+    parser.add_argument('--files_limit_step', action="store", dest="files_limit_step", type=int, default=750)
+    
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
     parser.add_argument('--profiler', action="store_true", dest="profiler", default=False)  # type=lambda x:x.lower in ['true', '1', 'y']
 

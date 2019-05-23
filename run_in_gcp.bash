@@ -9,3 +9,6 @@
 # ps aux | grep "python3.6"
 # python3.6 -m pip install -r requirements.txt --user
 # export PYTHONPATH=yourlocation
+# ssh -i ~/.ssh/id_rsa.pub zeitak_itai_gmail_com@35.190.222.91 (add ssh-keys via metadata)
+# ls -la c_sharp_code | wc -l
+# /usr/lib/p7zip/7z X c_sharp_code.7z -oc_sharp_code/ -aos
