@@ -13,12 +13,10 @@ import numpy as np
 
 
 def get_vectors(params, output_folder, cores_to_use, input_folder, vectorizer,
-                max_features, ngram_range=1, files_limit=100, security_keywords=None,
+                max_features, ngram_range=1, security_keywords=None,
                 min_token_count=-1, list_of_tokens=None):
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
-    if cores_to_use == -1:
-        cores_to_use = multiprocessing.cpu_count()
     print(f'using {cores_to_use} cores')
     mypath = input_folder
     vectorizer = {'count': CountVectorizer, 'tfidf': TfidfVectorizer}[vectorizer]
@@ -30,7 +28,7 @@ def get_vectors(params, output_folder, cores_to_use, input_folder, vectorizer,
                                                                                             security_keywords,
                                                                                             min_token_count, list_of_tokens)
     bow_matrix = bow_matrix.toarray()
-    np.savez(os.path.join(output_folder, 'vectors.npz'), bow_matrix=bow_matrix, lists=lists,
+    np.savez(os.path.join(output_folder, f'vectors{params.files_limit_start}.npz'), bow_matrix=bow_matrix, lists=lists,
              raw_lists=raw_lists, gt_values=gt_values,
              filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
              all_start_raw=all_start_raw, voacb=vectorizer1.vocabulary)

@@ -39,3 +39,5 @@ cluster_methods(minimal_cluster = 20) # into a set of files - each file for clus
 
 
 get ready for run on google cloud, set up machine ,etc
+copy old multiprocessing code for generataing features-create vectors multiprocess!!!!
+

@@ -5,8 +5,9 @@ import os
 import numpy as np
 import subprocess
 from analysis import analyze_functions2
+from mp import multi_process_run, BaseTask
 from parser_utils import str_to_params
-from utils import get_vectors, is_in
+from utils import get_vectors, is_in, get_filenames
 from tqdm import tqdm, trange
 import pandas as pd
 import sys
@@ -14,7 +15,8 @@ import copy
 from os.path import join
 import seaborn as sns
 sns.set()
-
+from multiprocessing import Queue
+import multiprocessing
 
 def main(args=None):
     params = str_to_params(args)
@@ -35,6 +37,23 @@ def upload_to_gcp(params):
             folder = folder+os.sep
         subprocess.check_output(f"gsutil -m cp {folder}*.svg {folder}*.txt {folder}*.npz gs://{params.gcp_bucket}/{folder}", shell=True)
 
+
+class UserProcessTask(BaseTask):
+    def __init__(self, params, list_of_tokens, in_queue):
+        super(UserProcessTask, self).__init__(in_queue, None)
+        self.params = params
+        self.list_of_tokens = list_of_tokens
+
+    def task(self, item):
+        print(f'workiin on item {item}')
+        self.params.files_limit_start = item
+        self.params.files_limit_end = item+self.params.files_limit_step
+        # bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
+        get_all_needed_inputs_params(self.params, self.list_of_tokens)
+        # vocab = vectorizer.vocabulary
+        upload_to_gcp(self.params)
+
+
 def main_(params):
     # can be called using dictobj.DictionaryObject({'metric': 'euclidean'}) or
     # str_to_params('--output_folder result3 --metric euclidean --input_folder ../codes_short/ --files_limit 100 --max_features 2000')
@@ -44,27 +63,31 @@ def main_(params):
     vector_path = join(params.output_folder, 'vectors.npz')
     tfidf_path = join(params.output_folder, 'tfidf.npz')
     distances_path = join(params.output_folder, 'distances.npz')
-    
+    if params.cores_to_use == -1:
+        params.cores_to_use = multiprocessing.cpu_count()
+    true_cores = params.cores_to_use
+    params.cores_to_ues = 1
     s = params.files_limit_start
-    e = params.files_limit_end
-    
+    e = min(params.files_limit_end, len(get_filenames(params.input_folder)))
+    q = Queue()
+
+
     if 'vectors' in params.stages_to_run or (not os.path.exists(vector_path) and is_in(['tfidf', 'distances', 'clustering'], params.stages_to_run)):
         count = s
         while count < e:
-            params.files_limit_start = count
-            # bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
-            get_all_needed_inputs_params(params, list_of_tokens)
-            # vocab = vectorizer.vocabulary
-            upload_to_gcp(params)
+            q.put(count)
             count += params.files_limit_step
 
-        all_start_raw, all_vulnerabilities, bow_matrix, filenames_list, gt_values, lists, raw_lists = dump_vectors_iter(e, s, vector_path)
+        multi_process_run(UserProcessTask(params, list_of_tokens, q), true_cores)
+        bow_matrix, lists, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = dump_vectors_iter(e, s, params.files_limit_step, vector_path)
 
     if 'tfidf' in params.stages_to_run or (not os.path.exists(tfidf_path) and is_in(['distances', 'clustering'], params.stages_to_run)):
         if 'vectors' not in params.stages_to_run:
-            data = load_vectors(vector_path)
-            bow_matrix, lists, raw_lists, gt_values, filenames_list,\
-                all_vulnerabilities, all_start_raw, vocab = data
+            #data = load_vectors(vector_path)
+            #bow_matrix, lists, raw_lists, gt_values, filenames_list,\
+            #    all_vulnerabilities, all_start_raw, vocab = data
+            bow_matrix, lists, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = dump_vectors_iter(
+                e, s, params.files_limit_step, vector_path)
         # intersting_indices = np.array(list(range(len(lists))))
         # if scipy.sparse.issparse(bow_matrix):
         #    matrix = bow_matrix.toarray()
@@ -92,15 +115,15 @@ def main_(params):
         subprocess.run('sudo shutdown', shell=True) # sudo shutdown 0 on aws machines
 
 
-def dump_vectors_iter(e, s, vector_path):
+def dump_vectors_iter(e, s, step, vector_path):
     count = 0
     while count < e:
         if count == s:
             bow_matrix, lists, raw_lists, gt_values, filenames_list, \
-            all_vulnerabilities, all_start_raw, vocab = load_vectors(vector_path + str(count))
+            all_vulnerabilities, all_start_raw, vocab = load_vectors(vector_path[:-4]+str(count)+'.npz')
         else:
             temp_bow_matrix, temp_lists, temp_raw_lists, temp_gt_values, temp_filenames_list, \
-            temp_all_vulnerabilities, temp_all_start_raw, temp_vocab = load_vectors(vector_path + str(count))
+            temp_all_vulnerabilities, temp_all_start_raw, temp_vocab = load_vectors(vector_path[:-4]+str(count)+'.npz')
             
             bow_matrix += temp_bow_matrix
             lists += temp_lists
@@ -110,7 +133,9 @@ def dump_vectors_iter(e, s, vector_path):
             all_vulnerabilities += temp_all_vulnerabilities
             all_start_raw += temp_all_start_raw
             assert vocab == temp_vocab
-    return all_start_raw, all_vulnerabilities, bow_matrix, filenames_list, gt_values, lists, raw_lists
+        count += step
+    return bow_matrix, lists, raw_lists, gt_values, filenames_list, \
+           all_vulnerabilities, all_start_raw, vocab
 
 
 def load_vectors(vector_path):
@@ -143,7 +168,7 @@ def get_vocab(select_top_tokens, path):
 
 def get_all_needed_inputs_params(params, list_of_tokens):
     return get_vectors(params, params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
-                       params.max_features, params.ngram_range, params.files_limit,
+                       params.max_features, params.ngram_range,
                        params.security_keywords, params.min_token_count, list_of_tokens)
 
 
