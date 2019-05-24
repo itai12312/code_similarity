@@ -32,7 +32,7 @@ def main(args=None):
 
 def upload_to_gcp(params):
     if params.gcp_bucket is not None:
-        folder = params.output_path
+        folder = params.output_folder
         if folder[-1] != os.sep:
             folder = folder+os.sep
         subprocess.check_output(f"gsutil -m cp {folder}*.svg {folder}*.txt {folder}*.npz gs://{params.gcp_bucket}/{folder}", shell=True)
