@@ -22,19 +22,19 @@ class BaseTask():
 
     def run_tasks_from_queue(self):
         assert self.in_queue
-        continu = True
-        while continu:
-            for tries in range(RETRIES):
-                time.sleep(TIME_PAUSE_BETWEEN) # to prevent thread reset by user errors in rabbitmq
-                while not self.in_queue.empty():
-                    time.sleep(TIME_PAUSE_BETWEEN)
-                    item = self.in_queue.get()
-                    self._run_task(item) # status =
-                    # self.in_queue.send_ack()
-                #if not continueonempty and self.in_queue.empty():
-                #    cont = False
-                #    break
-                time.sleep(SLEEP)
+        # continu = True
+        # while continu:
+            # for tries in range(RETRIES):
+        time.sleep(TIME_PAUSE_BETWEEN) # to prevent thread reset by user errors in rabbitmq
+        while not self.in_queue.empty():
+            time.sleep(TIME_PAUSE_BETWEEN)
+            item = self.in_queue.get()
+            self._run_task(item) # status =
+            # self.in_queue.send_ack()
+        #if not continueonempty and self.in_queue.empty():
+        #    cont = False
+        #    break
+        time.sleep(SLEEP)
     @abstractmethod
     def task(self, item):
         pass
