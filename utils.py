@@ -92,13 +92,14 @@ def create_functions_list_from_filename(item):
         cur = enders.index[idx]
         realidx = list(df.index).index(cur)
         temp = df.values[realidx, 2]
+        lim = len(df.values) -1
         steps = 0
         steps_num = 7
-        while is_not_ok(temp) and realidx < len(df.values)-1 and steps < steps_num:
+        while is_not_ok(temp) and realidx < lim and steps < steps_num:
             realidx += 1
             temp = df.values[realidx, 2]
             steps += 1
-        if (is_not_ok(temp) and realidx == len(df.values)-1) or steps == steps_num:
+        if (realidx == lim) or steps == steps_num:
             real_curs.append(-1)
         else:
             real_curs.append(df.index[realidx])

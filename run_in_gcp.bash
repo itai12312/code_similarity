@@ -15,3 +15,4 @@
 # --gcp_bucket jupter-data-for-sf --stages_to_run vectors tfidf --cores_to_use -1 --security_keywords sql xss xsrf xxe dos overflow injection cryptographically --matrix_form tfidf --vectorizer count --metric euclidean --input_folder ../codes/ --files_limit_end 100 --output_folder results1 --files_limit_step 30
 nohup python3.6 main.py --shutdown  --gcp_bucket jupter-data-for-sf --stages_to_run vectors tfidf --cores_to_use -1 --security_keywords sql xss xsrf xxe dos overflow injection cryptographically --matrix_form tfidf --vectorizer count --metric euclidean --input_folder ../codes/ --files_limit_end 130000 --output_folder results --files_limit_step 600 2>&1
 sudo shutdown
+# --cores_to_use 1 --security_keywords sql xss injection --matrix_form tfidf --vectorizer count --metric euclidean --input_folder ../codes_short/ --files_limit_end 10000 --output_folder result6 --files_limit_step 30
