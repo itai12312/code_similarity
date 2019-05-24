@@ -37,12 +37,12 @@ def analyze_functions2(distances, matrix, lists, raw_lists, params, gt_values, f
     z = dendrogram(lnk, labels=[f'{idx}_{val}' for idx, val in enumerate(gt_values)],
                    color_threshold=params.color_thresh,
                    orientation='right', leaf_font_size=8, leaf_rotation=0) # , link_color_func=get_color)
-    cluster_idxs = defaultdict(list)
-    for c, pi in zip(z['color_list'], z['icoord']):
-        for leg in pi[1:3]:
-            i = (leg - 5.0) / 10.0
-            if abs(i - int(i)) < 1e-5:
-                cluster_idxs[c].append(int(i))
+    # cluster_idxs = defaultdict(list)
+    # for c, pi in zip(z['color_list'], z['icoord']):
+    #     for leg in pi[1:3]:
+    #         i = (leg - 5.0) / 10.0
+    #         if abs(i - int(i)) < 1e-5:
+    #             cluster_idxs[c].append(int(i))
     intersting_clusters = dump_program_to_list_and_get_intersting_clusters('dendogram_list.txt', filenames, gt_values,
                                                                            lists, params, raw_lists, all_vulnerabilities, all_start_raw, z)
     if params.cluster_analysis_count > -1:

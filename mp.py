@@ -4,7 +4,7 @@ import os
 from multiprocessing import Process
 
 RETRIES = 15
-SLEEP = 10
+SLEEP = 1
 TIME_PAUSE_BETWEEN = 0.01
 
 class BaseTask():

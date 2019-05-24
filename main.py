@@ -66,7 +66,7 @@ def main_(params):
     if params.cores_to_use == -1:
         params.cores_to_use = multiprocessing.cpu_count()
     true_cores = params.cores_to_use
-    params.cores_to_ues = 1
+    params.cores_to_use = 1
     s = params.files_limit_start
     e = min(params.files_limit_end, len(get_filenames(params.input_folder)))
     q = Queue()
@@ -74,19 +74,22 @@ def main_(params):
 
     if 'vectors' in params.stages_to_run or (not os.path.exists(vector_path) and is_in(['tfidf', 'distances', 'clustering'], params.stages_to_run)):
         count = s
+        q_len = 0
         while count < e:
-            q.put(count)
+            if not os.path.exists(vector_path[:-4]+str(count)+'.npz'):
+                q.put(count)
+                q_len += 1
             count += params.files_limit_step
-
-        multi_process_run(UserProcessTask(params, list_of_tokens, q), true_cores)
-        bow_matrix, lists, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = dump_vectors_iter(e, s, params.files_limit_step, vector_path)
+        if q_len > 0:
+            multi_process_run(UserProcessTask(params, list_of_tokens, q), true_cores)
+        bow_matrix, lists, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(e, s, params.files_limit_step, vector_path)
 
     if 'tfidf' in params.stages_to_run or (not os.path.exists(tfidf_path) and is_in(['distances', 'clustering'], params.stages_to_run)):
         if 'vectors' not in params.stages_to_run:
             #data = load_vectors(vector_path)
             #bow_matrix, lists, raw_lists, gt_values, filenames_list,\
             #    all_vulnerabilities, all_start_raw, vocab = data
-            bow_matrix, lists, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = dump_vectors_iter(
+            bow_matrix, lists, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(
                 e, s, params.files_limit_step, vector_path)
         # intersting_indices = np.array(list(range(len(lists))))
         # if scipy.sparse.issparse(bow_matrix):
@@ -115,7 +118,7 @@ def main_(params):
         subprocess.run('sudo shutdown', shell=True) # sudo shutdown 0 on aws machines
 
 
-def dump_vectors_iter(e, s, step, vector_path):
+def load_vectors_iter(e, s, step, vector_path):
     count = 0
     while count < e:
         if count == s:
@@ -125,14 +128,14 @@ def dump_vectors_iter(e, s, step, vector_path):
             temp_bow_matrix, temp_lists, temp_raw_lists, temp_gt_values, temp_filenames_list, \
             temp_all_vulnerabilities, temp_all_start_raw, temp_vocab = load_vectors(vector_path[:-4]+str(count)+'.npz')
             
-            bow_matrix += temp_bow_matrix
-            lists += temp_lists
-            raw_lists += temp_raw_lists
-            gt_values += temp_gt_values
-            filenames_list += temp_filenames_list
-            all_vulnerabilities += temp_all_vulnerabilities
-            all_start_raw += temp_all_start_raw
-            assert vocab == temp_vocab
+            bow_matrix = np.concatenate([bow_matrix, temp_bow_matrix])
+            lists = np.concatenate([lists, temp_lists])
+            raw_lists = np.concatenate([raw_lists, temp_raw_lists])
+            gt_values = np.concatenate([gt_values, temp_gt_values])
+            filenames_list = np.concatenate([filenames_list, temp_filenames_list])
+            all_vulnerabilities = np.concatenate([all_vulnerabilities, temp_all_vulnerabilities])
+            all_start_raw = np.concatenate([all_start_raw, temp_all_start_raw])
+            assert (vocab == temp_vocab).all()
         count += step
     return bow_matrix, lists, raw_lists, gt_values, filenames_list, \
            all_vulnerabilities, all_start_raw, vocab
