@@ -65,7 +65,7 @@ def create_functions_list_from_filename(item):
             data = f.read().splitlines()
     except Exception as e:
         return [],[],[], f'{e}', [filename], [], []
-    original_df = copy.deepcopy(df)
+    # original_df = copy.deepcopy(df)
     df = df[df[0].notnull()]
     if len(df.index) == 0:
         return [], [],[],  f'no functions found!', [filename], [], []
@@ -87,32 +87,41 @@ def create_functions_list_from_filename(item):
     # raw_end = df.loc[enders.index-1]
     # df[2] = pd.to_numeric(df[2])
     curs = []
-    real_curs = []
+    # real_curs = []
+    # lim = len(df.values) - 1
+    # ls = list(df.index)
+    cidx = len(df.values)-1
+    while math.isnan(df.values[cidx,2]):
+        cidx -= 1
     for idx in range(len(enders.index)):
-        cur = enders.index[idx]
-        if cur in list(df.index):
-            realidx = list(df.index).index(cur)
-            temp = df.values[realidx, 2]
-            lim = len(df.values) -1
-            steps = 0
-            steps_num = 7
-            while is_not_ok(temp) and realidx < lim and steps < steps_num:
-                realidx += 1
-                temp = df.values[realidx, 2]
-                steps += 1
-            if (realidx == lim) or steps == steps_num:
-                real_curs.append(-1)
-                realidx = -1
-            else:
-                real_curs.append(df.index[realidx])
+        cur = enders.index[idx]+2
+        # realidx = ls.index(cur)
+        if idx == len(enders.index) - 1:
+            realidx = cidx
         else:
-            realidx = -1
-            real_curs.append(-1)
+            temp = df.loc[cur+2, 2]
+            if is_not_ok(temp): # and idx < len(enders.index) - 1:
+                realidx = list(df.index).index(df.index[starters.index[idx+1]+1])
+            else:
+                realidx = cidx
+        # steps = 0
+        # steps_num = 1000000
+        # while is_not_ok(temp) and realidx < lim and steps < steps_num:
+        #     realidx += 1
+        #     temp = df.values[realidx, 2]
+        #     steps += 1
+        # if (realidx == lim) or steps == steps_num:
+        #     real_curs.append(-1)
+        #     realidx = -1
+        # else:
+        #     real_curs.append(df.index[realidx])
+        if math.isnan(df.values[realidx,2]):
+            assert False
         curs.append(df.index[realidx])
     raw_end = df.loc[curs]
     assert len(raw_end) == len(raw_start)
     raw_ranges = list(zip(raw_start.values[:, 2], raw_end.values[:, 2]))
-    functions_raw = [('\n'.join(data[int(begin):int(end)] if real_curs[idx] > -1 else data[int(begin):]))
+    functions_raw = [('\n'.join(data[int(begin):int(end)]))
                       for idx, (begin, end) in enumerate(raw_ranges)]
     if '\\' in filename:
         separting_string = '\\tokenized1\\'
@@ -122,7 +131,7 @@ def create_functions_list_from_filename(item):
     gt_values = []
     filenames = []
     vulnerabilities = []
-    for (begin, end) in raw_ranges:
+    for (begin, _) in raw_ranges:
         indices = (gt['nMethod_Line'] == int(begin)+1) & ("\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name'])
         possibble = gt.loc[indices, 'qName'].values  # nMethod_Line
         possibble = set(possibble)
