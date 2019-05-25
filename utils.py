@@ -10,11 +10,11 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import pathos.multiprocessing as multiprocessing
 from tqdm import tqdm, trange
 import numpy as np
+import scipy
 
-
-def get_vectors(params, output_folder, cores_to_use, input_folder, vectorizer,
-                max_features, ngram_range=1, security_keywords=None,
-                min_token_count=-1, list_of_tokens=None):
+def generate_vectors(params, output_folder, cores_to_use, input_folder, vectorizer,
+                     max_features, ngram_range=1, security_keywords=None,
+                     min_token_count=-1, list_of_tokens=None):
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
     print(f'using {cores_to_use} cores')
@@ -27,14 +27,15 @@ def get_vectors(params, output_folder, cores_to_use, input_folder, vectorizer,
                                                                                             input_folder,
                                                                                             security_keywords,
                                                                                             min_token_count, list_of_tokens)
-    bow_matrix = bow_matrix.toarray()
-    np.savez(os.path.join(output_folder, f'vectors{params.files_limit_start}.npz'), bow_matrix=bow_matrix, lists=lists,
+    # bow_matrix = bow_matrix.toarray()
+    np.savez(os.path.join(output_folder, f'vectors_metadata{params.files_limit_start}.npz'), lists=lists,
              raw_lists=raw_lists, gt_values=gt_values,
              filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
              all_start_raw=all_start_raw, voacb=vectorizer1.vocabulary)
+    scipy.sparse.savez(os.path.join(output_folder, f'vectors{params.files_limit_start}.npz'),bow_matrix=bow_matrix)
     for i, token in enumerate(list_of_tokens):
-        assert sum([1 for c in lists[0].split(" ") if c == token]) == bow_matrix[0][i]
-    return bow_matrix, gt_values, lists, raw_lists, vectorizer1, filenames_list, all_vulnerabilities, all_start_raw
+        assert sum([1 for c in lists[0].split(" ") if c == token]) == bow_matrix[0].toarray()[i]
+    # return bow_matrix, gt_values, lists, raw_lists, vectorizer1, filenames_list, all_vulnerabilities, all_start_raw
 
 
 def str_ok(stri):

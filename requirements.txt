@@ -8,3 +8,4 @@ matplotlib
 parse
 dictobj
 tqdm
+scipy

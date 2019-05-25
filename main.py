@@ -7,7 +7,7 @@ import subprocess
 from analysis import analyze_functions2
 from mp import multi_process_run, BaseTask
 from parser_utils import str_to_params
-from utils import get_vectors, is_in, get_filenames
+from utils import generate_vectors, is_in, get_filenames
 from tqdm import tqdm, trange
 import pandas as pd
 import sys
@@ -72,7 +72,7 @@ def main_(params):
     q = Queue()
 
 
-    if 'vectors' in params.stages_to_run or (not os.path.exists(vector_path) and is_in(['tfidf', 'distances', 'clustering'], params.stages_to_run)):
+    if 'vectors' in params.stages_to_run or (not os.path.exists(vector_path[:-4]+'0.npz') and is_in(['tfidf', 'distances', 'clustering'], params.stages_to_run)):
         count = s
         q_len = 0
         while count < e:
@@ -123,11 +123,13 @@ def load_vectors_iter(e, s, step, vector_path):
     count = 0
     while count < e:
         if count == s:
-            bow_matrix, lists, raw_lists, gt_values, filenames_list, \
-            all_vulnerabilities, all_start_raw, vocab = load_vectors(vector_path[:-4]+str(count)+'.npz')
+            bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz').toarray()
+            lists, raw_lists, gt_values, filenames_list, \
+            all_vulnerabilities, all_start_raw, vocab = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
         else:
-            temp_bow_matrix, temp_lists, temp_raw_lists, temp_gt_values, temp_filenames_list, \
-            temp_all_vulnerabilities, temp_all_start_raw, temp_vocab = load_vectors(vector_path[:-4]+str(count)+'.npz')
+            temp_bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz').toarray()
+            temp_lists, temp_raw_lists, temp_gt_values, temp_filenames_list, \
+            temp_all_vulnerabilities, temp_all_start_raw, temp_vocab = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
             
             bow_matrix = np.concatenate([bow_matrix, temp_bow_matrix])
             lists = np.concatenate([lists, temp_lists])
@@ -142,8 +144,8 @@ def load_vectors_iter(e, s, step, vector_path):
            all_vulnerabilities, all_start_raw, vocab
 
 
-def load_vectors(vector_path):
-    data = np.load(vector_path)
+def load_vectors(vector_path, load=np.load):
+    data = load(vector_path)
     data = [data[att] for att in data.files]
     return data
 
@@ -171,9 +173,9 @@ def get_vocab(select_top_tokens, path):
 
 
 def get_all_needed_inputs_params(params, list_of_tokens):
-    return get_vectors(params, params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
-                       params.max_features, params.ngram_range,
-                       params.security_keywords, params.min_token_count, list_of_tokens)
+    return generate_vectors(params, params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
+                            params.max_features, params.ngram_range,
+                            params.security_keywords, params.min_token_count, list_of_tokens)
 
 
 def profile(params):
