@@ -35,7 +35,8 @@ def upload_to_gcp(params):
         folder = params.output_folder
         if folder[-1] != os.sep:
             folder = folder+os.sep
-        subprocess.check_output(f"gsutil -m cp {folder}*.svg {folder}*.txt {folder}*.npz gs://{params.gcp_bucket}/{folder}", shell=True)
+        command = f"gsutil -m cp {folder}*.svg {folder}*.txt {folder}*.npz gs://{params.gcp_bucket}/{folder}"
+        subprocess.check_output(command, shell=True)
 
 
 class UserProcessTask(BaseTask):
