@@ -44,7 +44,7 @@ def create_vectors_(params):
     #                   vocab, params, gt_values)
     # to access metrics directly, look in scipy.spatial.distance
     with open(os.path.join(params.output_folder, 'dump_results.numpy_savez'), 'wb+') as f:
-        np.savez(f, bow_matrix=bow_matrix, lists=lists,
+        np.savez_compressed(f, bow_matrix=bow_matrix, lists=lists,
                  raw_lists=raw_lists, gt_values=gt_values,
                  filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
                  all_start_raw=all_start_raw)

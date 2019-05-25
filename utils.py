@@ -28,13 +28,13 @@ def generate_vectors(params, output_folder, cores_to_use, input_folder, vectoriz
                                                                                             security_keywords,
                                                                                             min_token_count, list_of_tokens)
     # bow_matrix = bow_matrix.toarray()
-    np.savez(os.path.join(output_folder, f'vectors_metadata{params.files_limit_start}.npz'), lists=lists,
+    np.savez_compressed(os.path.join(output_folder, f'vectors_metadata{params.files_limit_start}.npz'), lists=lists,
              all_start_ends=all_ends_raw, gt_values=gt_values,
              filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
              all_start_raw=all_start_raw)
     vocab_path = os.path.join(output_folder, f'vectors_vocab.npz')
     if not os.path.exists(vocab_path):
-        np.savez(vocab_path, voacb=vectorizer1.vocabulary)
+        np.savez_compressed(vocab_path, voacb=vectorizer1.vocabulary)
     scipy.sparse.save_npz(os.path.join(output_folder, f'vectors{params.files_limit_start}.npz'),bow_matrix)
     #for i, token in enumerate(list_of_tokens):
     #    assert sum([1 for c in lists[0].split(" ") if c == token]) == bow_matrix.toarray()[0][i]
@@ -99,20 +99,34 @@ def create_functions_list_from_filename(item):
         cidx -= 1
     for idx in range(len(enders.index)):
         cur = enders.index[idx]+2
-        # realidx = ls.index(cur)
-        if idx == len(enders.index) - 1:
+        if cur in df.index:
+            frealidx = list(df.index).index(cur)
+            if not is_not_ok(df.values[frealidx, 2]):
+                realidx = frealidx
+        elif idx == len(enders.index) - 1:
             realidx = cidx
         else:
             temp = df.loc[cur+2, 2]
+            # realidx = cur+2
             idxi = idx
-            while is_not_ok(temp) and idxi < len(enders.index) - 1:
-                realidx = list(df.index).index(df.index[starters.index[idxi+1]-1])
-                temp = df.values[realidx, 2]
-                if is_not_ok(temp):
-                    print(f'interesting {idx} {idxi} {filename}')
+            realidx = cidx
+            while is_not_ok(temp) and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
+                # fix idxi out of bounds too!!!
+                if starters.index[idxi+1] <= len(df.index):
+                    loc = df.index[starters.index[idxi+1]-1]
+                    if loc in list(df.index):
+                        realidx = list(df.index).index(loc)
+                        temp = df.values[realidx, 2]
+                        if is_not_ok(temp):
+                            print(f'interesting {idx} {idxi} {filename}')
+                    else:
+                        temp = math.nan
+                else:
+                    temp = math.nan
                 idxi += 1
             else:
-                realidx = cidx
+                if is_not_ok(temp):
+                    realidx = cidx
         # steps = 0
         # steps_num = 1000000
         # while is_not_ok(temp) and realidx < lim and steps < steps_num:
