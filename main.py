@@ -36,6 +36,7 @@ def upload_to_gcp(params):
         if folder[-1] != os.sep:
             folder = folder+os.sep
         command = f"gsutil -m cp {folder}*.svg {folder}*.txt {folder}*.npz gs://{params.gcp_bucket}/{folder}"
+        print(f'upload command {command}')
         subprocess.check_output(command, shell=True)
 
 
@@ -115,7 +116,7 @@ def main_(params):
                            params, gt_values, filenames_list,
                            all_vulnerabilities, all_start_raw)
         upload_to_gcp(params)
-
+    print('finished')
     if params.shutdown:
         subprocess.run('sudo shutdown', shell=True) # sudo shutdown 0 on aws machines
 
