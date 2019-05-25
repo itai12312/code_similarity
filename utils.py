@@ -100,8 +100,13 @@ def create_functions_list_from_filename(item):
             realidx = cidx
         else:
             temp = df.loc[cur+2, 2]
-            if is_not_ok(temp): # and idx < len(enders.index) - 1:
-                realidx = list(df.index).index(df.index[starters.index[idx+1]+1])
+            idxi = idx
+            while is_not_ok(temp) and idxi < len(enders.index) - 1:
+                realidx = list(df.index).index(df.index[starters.index[idxi+1]-1])
+                temp = df.values[realidx, 2]
+                if is_not_ok(temp):
+                    print(f'interesting {idx} {idxi} {filename}')
+                idxi += 1
             else:
                 realidx = cidx
         # steps = 0
@@ -116,7 +121,7 @@ def create_functions_list_from_filename(item):
         # else:
         #     real_curs.append(df.index[realidx])
         if is_not_ok(df.values[realidx,2]):
-            assert False
+            assert False, f'real idx is {realidx}'
         curs.append(df.index[realidx])
     raw_end = df.loc[curs]
     assert len(raw_end) == len(raw_start)
