@@ -35,7 +35,12 @@ def upload_to_gcp(params):
         folder = params.output_folder
         if folder[-1] != os.sep:
             folder = folder+os.sep
-        command = f"gsutil -m cp {folder}*.svg {folder}*.txt {folder}*.npz gs://{params.gcp_bucket}/{folder}"
+        has_svg = ''
+        for filename in os.listdir(folder):
+            if filename.endswith('.svg'):
+                has_svg = f'{folder}*.svg'
+                break
+        command = f"gsutil -m cp {has_svg} {folder}*.txt {folder}*.npz gs://{params.gcp_bucket}/{folder}"
         print(f'upload command {command}')
         subprocess.check_output(command, shell=True)
 
