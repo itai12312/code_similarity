@@ -25,10 +25,10 @@ class BaseTask():
         # continu = True
         # while continu:
             # for tries in range(RETRIES):
-        time.sleep(TIME_PAUSE_BETWEEN) # to prevent thread reset by user errors in rabbitmq
+        time.sleep(SLEEP) # to prevent thread reset by user errors in rabbitmq
         while not self.in_queue.empty():
-            time.sleep(TIME_PAUSE_BETWEEN)
             item = self.in_queue.get()
+            time.sleep(TIME_PAUSE_BETWEEN)
             self._run_task(item) # status =
             # self.in_queue.send_ack()
         #if not continueonempty and self.in_queue.empty():
