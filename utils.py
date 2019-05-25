@@ -91,7 +91,7 @@ def create_functions_list_from_filename(item):
     # lim = len(df.values) - 1
     # ls = list(df.index)
     cidx = len(df.values)-1
-    while math.isnan(df.values[cidx,2]):
+    while is_not_ok(df.values[cidx,2]):
         cidx -= 1
     for idx in range(len(enders.index)):
         cur = enders.index[idx]+2
@@ -115,7 +115,7 @@ def create_functions_list_from_filename(item):
         #     realidx = -1
         # else:
         #     real_curs.append(df.index[realidx])
-        if math.isnan(df.values[realidx,2]):
+        if is_not_ok(df.values[realidx,2]):
             assert False
         curs.append(df.index[realidx])
     raw_end = df.loc[curs]

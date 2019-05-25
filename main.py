@@ -51,7 +51,7 @@ class UserProcessTask(BaseTask):
         # bow_matrix, gt_values, lists, raw_lists, vectorizer, filenames_list, all_vulnerabilities, all_start_raw = \
         get_all_needed_inputs_params(self.params, self.list_of_tokens)
         # vocab = vectorizer.vocabulary
-        upload_to_gcp(self.params)
+        # upload_to_gcp(self.params)
 
 
 def main_(params):
@@ -82,6 +82,7 @@ def main_(params):
             count += params.files_limit_step
         if q_len > 0:
             multi_process_run(UserProcessTask(params, list_of_tokens, q), true_cores)
+        upload_to_gcp(params)
         bow_matrix, lists, raw_lists, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(e, s, params.files_limit_step, vector_path)
 
     if 'tfidf' in params.stages_to_run or (not os.path.exists(tfidf_path) and is_in(['distances', 'clustering'], params.stages_to_run)):
