@@ -9,6 +9,7 @@
 # htop
 # ps aux | grep "python3.6"
 # pkill -f "python3.6 main.py"
+# shutdown -c
 # python3.6 -m pip install -r requirements.txt --user
 # export PYTHONPATH=yourlocation
 # ssh -i ~/.ssh/id_rsa.pub zeitak_itai_gmail_com@34.76.125.245 (add ssh-keys via metadata)

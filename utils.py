@@ -95,8 +95,10 @@ def create_functions_list_from_filename(item):
     # lim = len(df.values) - 1
     # ls = list(df.index)
     cidx = len(df.values)-1
-    while is_not_ok(df.values[cidx,2]):
+    while is_not_ok(df.values[cidx,2]) and cidx > 0:
         cidx -= 1
+    if cidx == 0:
+        return [], [], [], [], f'no tokenized found!', [filename], [], []
     for idx in range(len(enders.index)):
         cur = enders.index[idx]+2
         if cur in df.index:
@@ -112,7 +114,7 @@ def create_functions_list_from_filename(item):
             realidx = cidx
             c = 0
             print(f'in {filename} at {idx} out of {len(enders.index)}')
-            while is_not_ok(temp) and c < 3 and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
+            while is_not_ok(temp) and c < 10 and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
                 # fix idxi out of bounds too!!!
                 if starters.index[idxi+1] <= len(df.index):
                     loc = df.index[starters.index[idxi+1]-1]
