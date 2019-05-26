@@ -6,7 +6,7 @@ import numpy as np
 
 from analysis import analyze_functions2
 from parser_utils import str_to_params
-from utils import get_vectors
+from utils import generate_vectors
 from tqdm import tqdm, trange
 import pandas as pd
 import sys
@@ -44,7 +44,7 @@ def create_vectors_(params):
     #                   vocab, params, gt_values)
     # to access metrics directly, look in scipy.spatial.distance
     with open(os.path.join(params.output_folder, 'dump_results.numpy_savez'), 'wb+') as f:
-        np.savez(f, bow_matrix=bow_matrix, lists=lists,
+        np.savez_compressed(f, bow_matrix=bow_matrix, lists=lists,
                  raw_lists=raw_lists, gt_values=gt_values,
                  filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
                  all_start_raw=all_start_raw)
@@ -77,9 +77,9 @@ def create_vectors_(params):
 
 
 def get_all_needed_inputs_params(params, list_of_tokens):
-    return get_vectors(params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
-                       params.max_features, params.ngram_range, params.files_limit,
-                       params.security_keywords, params.min_token_count, list_of_tokens)
+    return generate_vectors(params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
+                            params.max_features, params.ngram_range, params.files_limit,
+                            params.security_keywords, params.min_token_count, list_of_tokens)
 
 
 def profile(params):
