@@ -110,7 +110,8 @@ def create_functions_list_from_filename(item):
             # realidx = cur+2
             idxi = idx
             realidx = cidx
-            while is_not_ok(temp) and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
+            c = 0
+            while is_not_ok(temp) and c < 10 and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
                 # fix idxi out of bounds too!!!
                 if starters.index[idxi+1] <= len(df.index):
                     loc = df.index[starters.index[idxi+1]-1]
@@ -124,6 +125,7 @@ def create_functions_list_from_filename(item):
                 else:
                     temp = math.nan
                 idxi += 1
+                c+= 1
             else:
                 if is_not_ok(temp):
                     realidx = cidx
