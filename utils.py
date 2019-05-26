@@ -111,7 +111,8 @@ def create_functions_list_from_filename(item):
             idxi = idx
             realidx = cidx
             c = 0
-            while is_not_ok(temp) and c < 10 and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
+            print(f'in {filename} at {idx} out of {len(enders.index)}')
+            while is_not_ok(temp) and c < 3 and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
                 # fix idxi out of bounds too!!!
                 if starters.index[idxi+1] <= len(df.index):
                     loc = df.index[starters.index[idxi+1]-1]
