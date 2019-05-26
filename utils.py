@@ -106,34 +106,35 @@ def create_functions_list_from_filename(item):
             frealidx = list(df.index).index(cur)
             if not is_not_ok(df.values[frealidx, 2]):
                 realidx = frealidx
-        if realidx is None:
-            if idx == len(enders.index) - 1:
-                realidx = cidx
             else:
-                temp = df.loc[cur+2, 2]
-                # realidx = cur+2
-                idxi = idx
                 realidx = cidx
-                c = 0
-                print(f'in {filename} at {idx} out of {len(enders.index)}')
-                while is_not_ok(temp) and c < 10 and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
-                    # fix idxi out of bounds too!!!
-                    if starters.index[idxi+1] <= len(df.index):
-                        loc = df.index[starters.index[idxi+1]-1]
-                        if loc in list(df.index):
-                            realidx = list(df.index).index(loc)
-                            temp = df.values[realidx, 2]
-                            if is_not_ok(temp):
-                                print(f'interesting {idx} {idxi} {filename}')
-                        else:
-                            temp = math.nan
+        elif idx == len(enders.index) - 1:
+            realidx = cidx
+        else:
+            temp = df.loc[cur+2, 2]
+            # realidx = cur+2
+            idxi = idx
+            realidx = cidx
+            c = 0
+            print(f'in {filename} at {idx} out of {len(enders.index)}')
+            while is_not_ok(temp) and c < 10 and idxi < len(enders.index) - 1 and idxi+1 <= len(starters.index):
+                # fix idxi out of bounds too!!!
+                if starters.index[idxi+1] <= len(df.index):
+                    loc = df.index[starters.index[idxi+1]-1]
+                    if loc in list(df.index):
+                        realidx = list(df.index).index(loc)
+                        temp = df.values[realidx, 2]
+                        if is_not_ok(temp):
+                            print(f'interesting {idx} {idxi} {filename}')
                     else:
                         temp = math.nan
-                    idxi += 1
-                    c+= 1
                 else:
-                    if is_not_ok(temp):
-                        realidx = cidx
+                    temp = math.nan
+                idxi += 1
+                c+= 1
+            else:
+                if is_not_ok(temp):
+                    realidx = cidx
         # steps = 0
         # steps_num = 1000000
         # while is_not_ok(temp) and realidx < lim and steps < steps_num:
