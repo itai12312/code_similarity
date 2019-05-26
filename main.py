@@ -89,7 +89,7 @@ def main_(params):
             count += params.files_limit_step
         if q_len > 0:
             multi_process_run(UserProcessTask(params, list_of_tokens, q), true_cores)
-        bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(e, s, params.files_limit_step, vector_path)
+        bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter_folder(e, s, params.files_limit_step, vector_path)
         np.savez_compressed(os.path.join(params.output_folder, f'vectors_all.npz'), bow_matrix=bow_matrix, lists=lists,
                             all_start_ends=all_ends_raw, gt_values=gt_values,
                             filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
@@ -98,11 +98,10 @@ def main_(params):
 
     if 'tfidf' in params.stages_to_run or (not os.path.exists(tfidf_path) and is_in(['distances', 'clustering'], params.stages_to_run)):
         if 'vectors' not in params.stages_to_run:
-            #data = load_vectors(vector_path)
-            #bow_matrix, lists, raw_lists, gt_values, filenames_list,\
+            # data = load_vectors(vector_path)
+            # bow_matrix, lists, raw_lists, gt_values, filenames_list,\
             #    all_vulnerabilities, all_start_raw, vocab = data
-            bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(
-                e, s, params.files_limit_step, vector_path)
+            bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(vector_path)
         # intersting_indices = np.array(list(range(len(lists))))
         # if scipy.sparse.issparse(bow_matrix):
         #    matrix = bow_matrix.toarray()
@@ -130,30 +129,36 @@ def main_(params):
         subprocess.run('sudo shutdown', shell=True) # sudo shutdown 0 on aws machines
 
 
-def load_vectors_iter(e, s, step, vector_path):
-    count = 0
+def load_vectors_iter(vector_path):
     bow_matrix, lists, all_ends_raw, gt_values, filenames_list, \
     all_vulnerabilities, all_start_raw = load_vectors(vector_path[:-4]+'_all.npz')
     vocab = load_vectors(vector_path[:-4] + '_vocab.npz')
-    # while count < e:
-    #     if count == s:
-    #         bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True).toarray()
-    #         lists, all_ends_raw, gt_values, filenames_list, \
-    #         all_vulnerabilities, all_start_raw = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
-    #     else:
-    #         temp_bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True).toarray()
-    #         temp_lists, temp_ends_raw, temp_gt_values, temp_filenames_list, \
-    #         temp_all_vulnerabilities, temp_all_start_raw = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
-    #
-    #         bow_matrix = np.concatenate([bow_matrix, temp_bow_matrix])
-    #         lists = np.concatenate([lists, temp_lists])
-    #         all_ends_raw = np.concatenate([all_ends_raw, temp_ends_raw])
-    #         gt_values = np.concatenate([gt_values, temp_gt_values])
-    #         filenames_list = np.concatenate([filenames_list, temp_filenames_list])
-    #         all_vulnerabilities = np.concatenate([all_vulnerabilities, temp_all_vulnerabilities])
-    #         all_start_raw = np.concatenate([all_start_raw, temp_all_start_raw])
-    #         # assert (vocab == temp_vocab).all()
-    #     count += step
+    return bow_matrix, lists, all_ends_raw, gt_values, filenames_list, \
+           all_vulnerabilities, all_start_raw, vocab
+
+
+def load_vectors_iter_folder(e, s, step, vector_path):
+    count = 0
+    vocab = load_vectors(vector_path[:-4] + '_vocab.npz')
+    while count < e:
+        if count == s:
+            bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True).toarray()
+            lists, all_ends_raw, gt_values, filenames_list, \
+            all_vulnerabilities, all_start_raw = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
+        else:
+            temp_bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True).toarray()
+            temp_lists, temp_ends_raw, temp_gt_values, temp_filenames_list, \
+            temp_all_vulnerabilities, temp_all_start_raw = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
+    
+            bow_matrix = np.concatenate([bow_matrix, temp_bow_matrix])
+            lists = np.concatenate([lists, temp_lists])
+            all_ends_raw = np.concatenate([all_ends_raw, temp_ends_raw])
+            gt_values = np.concatenate([gt_values, temp_gt_values])
+            filenames_list = np.concatenate([filenames_list, temp_filenames_list])
+            all_vulnerabilities = np.concatenate([all_vulnerabilities, temp_all_vulnerabilities])
+            all_start_raw = np.concatenate([all_start_raw, temp_all_start_raw])
+            # assert (vocab == temp_vocab).all()
+        count += step
     return bow_matrix, lists, all_ends_raw, gt_values, filenames_list, \
            all_vulnerabilities, all_start_raw, vocab
 
