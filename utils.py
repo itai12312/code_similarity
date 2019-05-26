@@ -101,7 +101,6 @@ def create_functions_list_from_filename(item):
         return [], [], [], [], f'no tokenized found!', [filename], [], []
     for idx in range(len(enders.index)):
         cur = enders.index[idx]+2
-        realidx = None
         if cur in df.index:
             frealidx = list(df.index).index(cur)
             if not is_not_ok(df.values[frealidx, 2]):
@@ -146,8 +145,8 @@ def create_functions_list_from_filename(item):
         #     realidx = -1
         # else:
         #     real_curs.append(df.index[realidx])
-        #if is_not_ok(df.values[realidx,2]):
-        #    assert False, f'real idx is {realidx}'
+        if is_not_ok(df.values[realidx,2]):
+           assert False, f'real idx is {realidx}'
         curs.append(df.index[realidx])
     raw_end = df.loc[curs]
     assert len(raw_end) == len(raw_start)
