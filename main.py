@@ -141,6 +141,7 @@ def load_vectors_iter_folder(e, s, step, vector_path):
     count = 0
     vocab = load_vectors(vector_path[:-4] + '_vocab.npz')
     while count < e:
+        print(f'loading {count}')
         if count == s:
             bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True).toarray()
             lists, all_ends_raw, gt_values, filenames_list, \
