@@ -137,12 +137,12 @@ def load_vectors_iter(vector_path):
            all_vulnerabilities, all_start_raw, vocab
 
 
-def load_vectors_iter_folder(e, s, step, vector_path):
+def load_vectors_iter_folder(end, start, step, vector_path):
     count = 0
     vocab = load_vectors(vector_path[:-4] + '_vocab.npz')
-    while count < e:
+    while count < end:
         print(f'loading {count}')
-        if count == s:
+        if count == start:
             bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True).toarray()
             lists, all_ends_raw, gt_values, filenames_list, \
             all_vulnerabilities, all_start_raw = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
