@@ -91,10 +91,10 @@ def main_(params):
         if q_len > 0:
             multi_process_run(UserProcessTask(params, list_of_tokens, q), true_cores)
         bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter_folder(e, s, params.files_limit_step, vector_path, indices=params.select_functions_limit)
-        # np.savez_compressed(os.path.join(params.output_folder, f'vectors_all.npz'), bow_matrix=bow_matrix, lists=lists,
-        #                     all_start_ends=all_ends_raw, gt_values=gt_values,
-        #                     filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
-        #                     all_start_raw=all_start_raw)
+        np.savez_compressed(os.path.join(params.output_folder, f'vectors_all.npz'), bow_matrix=bow_matrix, lists=lists,
+                            all_start_ends=all_ends_raw, gt_values=gt_values,
+                            filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
+                            all_start_raw=all_start_raw)
         upload_to_gcp(params)
     q.close()
 
@@ -103,7 +103,7 @@ def main_(params):
             # data = load_vectors(vector_path)
             # bow_matrix, lists, raw_lists, gt_values, filenames_list,\
             #    all_vulnerabilities, all_start_raw, vocab = data
-            bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter_folder(e,s, params.files_limit_step, vector_path, indices=params.select_functions_limit)
+            bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(vector_path) # load_vectors_iter_folder(e,s, params.files_limit_step, vector_path, indices=params.select_functions_limit)
         # intersting_indices = np.array(list(range(len(lists))))
         # if scipy.sparse.issparse(bow_matrix):
         #    matrix = bow_matrix.toarray()
@@ -141,7 +141,7 @@ def load_vectors_iter(vector_path):
            all_vulnerabilities, all_start_raw, vocab
 
 
-def load_vectors_iter_folder(end, start, step, vector_path, indices=None):
+def load_vectors_iter_folder(end, start, step, vector_path, indices=None, load_indices=True):
     indices_path = vector_path[:-4] + '_indices.npy'
     if not os.path.exists(indices_path):
         number_of_functions = 0
@@ -164,16 +164,16 @@ def load_vectors_iter_folder(end, start, step, vector_path, indices=None):
     while count < end:
         print(f'loading {count}')
         if count == start:
-            bow_matrix, current_function_count = load_vectors(vector_path[:-4]+str(count)+'.npz', functions_count, save_indices, load=scipy.sparse.load_npz, ret_as_is=True)
+            bow_matrix, current_function_count = load_vectors(vector_path[:-4]+str(count)+'.npz', functions_count, save_indices, load=scipy.sparse.load_npz, ret_as_is=True ,load_indices=load_indices)
             bow_matrix = bow_matrix.toarray()
             lists, all_ends_raw, gt_values, filenames_list, \
-            all_vulnerabilities, all_start_raw, _ = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz', functions_count, save_indices)
+            all_vulnerabilities, all_start_raw, _ = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz', functions_count, save_indices ,load_indices=load_indices)
             functions_count += current_function_count
         else:
-            temp_bow_matrix, current_function_count = load_vectors(vector_path[:-4]+str(count)+'.npz', functions_count, save_indices, load=scipy.sparse.load_npz, ret_as_is=True)
+            temp_bow_matrix, current_function_count = load_vectors(vector_path[:-4]+str(count)+'.npz', functions_count, save_indices, load=scipy.sparse.load_npz, ret_as_is=True ,load_indices=load_indices)
             temp_bow_matrix = temp_bow_matrix.toarray()
             temp_lists, temp_ends_raw, temp_gt_values, temp_filenames_list, \
-            temp_all_vulnerabilities, temp_all_start_raw, _ = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz', functions_count, save_indices)
+            temp_all_vulnerabilities, temp_all_start_raw, _ = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz', functions_count, save_indices ,load_indices=load_indices)
     
             bow_matrix = np.concatenate([bow_matrix, temp_bow_matrix])
             lists = np.concatenate([lists, temp_lists])
@@ -189,13 +189,17 @@ def load_vectors_iter_folder(end, start, step, vector_path, indices=None):
            all_vulnerabilities, all_start_raw, vocab
 
 
-def load_vectors(vector_path, functions_count=None, save_indices=None, load=np.load, ret_as_is=False):
+def load_vectors(vector_path, functions_count=None, save_indices=None, load=np.load, ret_as_is=False, load_indices=True):
     data = load(vector_path)
     if ret_as_is:
         functions_in_disk = data.shape[0]
         if save_indices is not None:
             legal_indices = save_indices-functions_count
             legal_indices = legal_indices[(legal_indices>=0) & (legal_indices < functions_in_disk)]
+            if load_indices is False:
+                mask = np.ones((data.shape[0], ), dtype=bool)  # np.ones_like(a,dtype=bool)
+                mask[legal_indices] = False
+                legal_indices = legal_indices
             return data[legal_indices], functions_in_disk
         else:
             return data, functions_in_disk
@@ -204,6 +208,10 @@ def load_vectors(vector_path, functions_count=None, save_indices=None, load=np.l
     if save_indices is not None:
         legal_indices = save_indices - functions_count
         legal_indices = legal_indices[(legal_indices >= 0) & (legal_indices < functions_in_disk)]
+        if load_indices is False:
+            mask = np.ones((data[0].shape[0],), dtype=bool)  # np.ones_like(a,dtype=bool)
+            mask[legal_indices] = False
+            legal_indices = legal_indices
         data = [d[legal_indices] for d in data]
     return (*data, functions_in_disk)
 
