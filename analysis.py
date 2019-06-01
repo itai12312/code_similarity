@@ -36,15 +36,19 @@ def analyze_functions2(distances, matrix, lists, raw_lists, params, gt_values, f
     plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
     z = dendrogram(lnk, labels=[f'{idx}_{val}' for idx, val in enumerate(gt_values)],
                    color_threshold=params.color_thresh,
-                   orientation='right', leaf_font_size=8, leaf_rotation=0) # , link_color_func=get_color)
+                   orientation='right', leaf_font_size=8, leaf_rotation=0,
+                   show_contracted=True, truncate_mode='lastp')  #can use p=20 and truncate_mode='level' , link_color_func=get_color)
     # cluster_idxs = defaultdict(list)
     # for c, pi in zip(z['color_list'], z['icoord']):
     #     for leg in pi[1:3]:
     #         i = (leg - 5.0) / 10.0
     #         if abs(i - int(i)) < 1e-5:
     #             cluster_idxs[c].append(int(i))
+    indices_path = os.path.join(params.output_folder, 'vectors_indices.npy')
+    indices = np.load(indices_path)
     intersting_clusters = dump_program_to_list_and_get_intersting_clusters('dendogram_list.txt', filenames, gt_values,
-                                                                           lists, params, raw_lists, all_vulnerabilities, all_start_raw, z)
+                                                                           lists, params, raw_lists, all_vulnerabilities, all_start_raw, z, indices=indices)
+    np.save(os.path.join(params.output_folder, 'vectors_clusters.npy'), intersting_clusters)
     if params.cluster_analysis_count > -1:
         intersting_clusters = intersting_clusters[:params.cluster_analysis_count]
     plt.grid(axis='y')
@@ -92,7 +96,7 @@ def predictions(gt_values, matrix):
     return confusion_matrix(res, y_test), x_train, x_test, y_train, y_test
 
 
-def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames, gt_values, lists, params, raw_lists, all_vulnerabilities, all_start_raw, z, cluster=None):
+def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames, gt_values, lists, params, raw_lists, all_vulnerabilities, all_start_raw, z, cluster=None, indices=None):
     intersting_clusters = []
     with open(os.path.join(params.output_folder, output_filename), 'w+') as f:
         f.write(f'order of leaves is {z["leaves"]}\n')
@@ -112,8 +116,10 @@ def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames,
                 begin_message = f'program # {orig_prog_id}, in cluster list {prog_id}, index in list {i}'
             else:
                 begin_message = f'program # {prog_id}, location in cluser {i}'
-            f.write(begin_message+f' with gt {gt_values[prog_id]}\n  in filename{filenames[prog_id]} starts@{all_start_raw[prog_id]} and vurn: {all_vulnerabilities[prog_id]}\n')
-            f.write(f"{raw_lists[prog_id]}\n")
+
+            loc = prog_id if indices is None else indices.tolist().index(prog_id)
+            f.write(begin_message+f' with gt {gt_values[loc]}\n  in filename{filenames[loc]} starts@{all_start_raw[loc]} and vurn: {all_vulnerabilities[loc]}\n')
+            f.write(f"{raw_lists[loc]}\n")
         f.write(f'finished new cluster with len {i - prev}\n')
         if i - prev > 18:
             intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
