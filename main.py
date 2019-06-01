@@ -113,6 +113,8 @@ def main_(params):
         upload_to_gcp(params)
     
     if 'distances' in params.stages_to_run or (not os.path.exists(distances_path) and is_in(['clustering'], params.stages_to_run)):
+        if 'vectors' not in params.stages_to_run and 'tfidf' not in params.stages_to_run:
+            bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(vector_path)
         if 'tfidf' not in params.stages_to_run:
             matrix = np.load(tfidf_path)['matrix']
         distances = pdist(matrix, metric=params.metric)
