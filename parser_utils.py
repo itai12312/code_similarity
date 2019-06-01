@@ -32,6 +32,7 @@ def get_parser():
     parser.add_argument('--context', action="store", dest="context", type=int, default=10)
     parser.add_argument('--seed', action="store", dest="seed", type=int, default=0)
     parser.add_argument('--no_top_words', action="store", dest="no_top_words", type=int, default=10)
+    parser.add_argument('--select_functions_limit', action="store", dest="select_functions_limit", type=int, default=10000)
     parser.add_argument('--cluster_analysis_count', action="store", dest="cluster_analysis_count", type=int, default=-1)
     # parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
     parser.add_argument('--color_thresh', action="store", dest="color_thresh", type=float, default=0.115)
