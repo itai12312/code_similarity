@@ -9,31 +9,57 @@ def create_small_clusters(number_of_clusters = 10):
     list_of_clusters = []
     for i in range(number_of_clusters):
         cluster, vectors_types = create_cluster_and_types()
-
-        if isinstance(cluster, np.ndarray):
-            cluster = list(cluster)
-
         list_of_clusters.append(cluster)
     return list_of_clusters
 
-def create_random_vectors(number_of_vectors = 2000):
+def create_random_vectors(number_of_vectors = 20):
     list_of_vectors = []
     for i in range(number_of_vectors):
         list_of_vectors.append(create_random_vector(VECTOR_SIZE))
     return list_of_vectors
 
 
+def convert_clusters_to_lists(clusters):
+    clusters_as_lists = []
+    for cluster in clusters:
+        clusters_as_lists.append(list(cluster))
+    return clusters_as_lists
+
+
+def convert_clusters_to_ndarrays(clusters):
+    clusters_as_ndarrays = []
+    for cluster in clusters:
+        clusters_as_ndarrays.append(np.asarray(cluster))
+    return clusters_as_ndarrays
+
+
 def expand_clusters_with_knn(clusters, new_vectors, k = 5):
     '''
     receives existing clusters, and adds the new vectors to them, according to k closest neighbors
-    :param clusters: list of list of ndarrays
+    :param clusters: list of list of arrays, or list of ndarrays
     :param new_vectors: list of ndarrays
     :return: expanded clusters
     '''
+    if len(clusters) == 0 or clusters == None:
+        return clusters
+
+    ndarray = False
+    if isinstance(clusters[0], np.ndarray):
+        ndarray = True
+        clusters = convert_clusters_to_lists(clusters)
+
+    clusters = add_vectors_to_clusters(clusters, k, new_vectors)
+
+    if ndarray:
+        clusters = convert_clusters_to_ndarrays(clusters)
+
+    return clusters
+
+
+def add_vectors_to_clusters(clusters, k, new_vectors):
     for i, vector in enumerate(new_vectors):
         add_vector_to_cluster(vector, clusters, k)
     return clusters
-
 
 def add_vector_to_cluster(new_vector, clusters, k):
     distances = get_distances_dict(clusters, new_vector)
