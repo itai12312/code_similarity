@@ -17,6 +17,7 @@ import seaborn as sns
 sns.set()
 from multiprocessing import Queue
 import multiprocessing
+import random
 
 def main(args=None):
     params = str_to_params(args)
@@ -89,19 +90,20 @@ def main_(params):
             count += params.files_limit_step
         if q_len > 0:
             multi_process_run(UserProcessTask(params, list_of_tokens, q), true_cores)
-        bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter_folder(e, s, params.files_limit_step, vector_path)
+        bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter_folder(e, s, params.files_limit_step, vector_path, indices=params.select_functions_limit)
         np.savez_compressed(os.path.join(params.output_folder, f'vectors_all.npz'), bow_matrix=bow_matrix, lists=lists,
                             all_start_ends=all_ends_raw, gt_values=gt_values,
                             filenames_list=filenames_list, all_vulnerabilities=all_vulnerabilities,
                             all_start_raw=all_start_raw)
         upload_to_gcp(params)
+    q.close()
 
     if 'tfidf' in params.stages_to_run or (not os.path.exists(tfidf_path) and is_in(['distances', 'clustering'], params.stages_to_run)):
         if 'vectors' not in params.stages_to_run:
             # data = load_vectors(vector_path)
             # bow_matrix, lists, raw_lists, gt_values, filenames_list,\
             #    all_vulnerabilities, all_start_raw, vocab = data
-            bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(vector_path)
+            bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(vector_path) # load_vectors_iter_folder(e,s, params.files_limit_step, vector_path, indices=params.select_functions_limit)
         # intersting_indices = np.array(list(range(len(lists))))
         # if scipy.sparse.issparse(bow_matrix):
         #    matrix = bow_matrix.toarray()
@@ -111,6 +113,8 @@ def main_(params):
         upload_to_gcp(params)
     
     if 'distances' in params.stages_to_run or (not os.path.exists(distances_path) and is_in(['clustering'], params.stages_to_run)):
+        if 'vectors' not in params.stages_to_run and 'tfidf' not in params.stages_to_run:
+            bow_matrix, lists, all_ends_raw, gt_values, filenames_list, all_vulnerabilities, all_start_raw, vocab = load_vectors_iter(vector_path)
         if 'tfidf' not in params.stages_to_run:
             matrix = np.load(tfidf_path)['matrix']
         distances = pdist(matrix, metric=params.metric)
@@ -131,25 +135,45 @@ def main_(params):
 
 def load_vectors_iter(vector_path):
     bow_matrix, lists, all_ends_raw, gt_values, filenames_list, \
-    all_vulnerabilities, all_start_raw = load_vectors(vector_path[:-4]+'_all.npz')
-    vocab = load_vectors(vector_path[:-4] + '_vocab.npz')
+    all_vulnerabilities, all_start_raw, _ = load_vectors(vector_path[:-4]+'_all.npz')
+    vocab,_ = load_vectors(vector_path[:-4] + '_vocab.npz')
     return bow_matrix, lists, all_ends_raw, gt_values, filenames_list, \
            all_vulnerabilities, all_start_raw, vocab
 
 
-def load_vectors_iter_folder(e, s, step, vector_path):
-    count = 0
-    vocab = load_vectors(vector_path[:-4] + '_vocab.npz')
-    while count < e:
-        print(f'loading {count}')
-        if count == s:
-            bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True).toarray()
-            lists, all_ends_raw, gt_values, filenames_list, \
-            all_vulnerabilities, all_start_raw = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
+def load_vectors_iter_folder(end, start, step, vector_path, indices=None, load_indices=True):
+    indices_path = vector_path[:-4] + '_indices.npy'
+    if not os.path.exists(indices_path):
+        number_of_functions = 0
+        count = start
+        while count < end:
+            _, len_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True)
+            count += step
+            number_of_functions += len_matrix
+        if indices is None:
+            save_indices = np.array(list(range(number_of_functions)))
+        elif isinstance(indices, int):
+            save_indices = np.array(random.sample(range(number_of_functions), indices))
         else:
-            temp_bow_matrix = load_vectors(vector_path[:-4]+str(count)+'.npz', load=scipy.sparse.load_npz, ret_as_is=True).toarray()
+            save_indices = indices
+        np.save(indices_path, save_indices)
+    save_indices = np.load(indices_path)
+    count = start
+    functions_count = 0
+    vocab, _ = load_vectors(vector_path[:-4] + '_vocab.npz')
+    while count < end:
+        print(f'loading {count}')
+        if count == start:
+            bow_matrix, current_function_count = load_vectors(vector_path[:-4]+str(count)+'.npz', functions_count, save_indices, load=scipy.sparse.load_npz, ret_as_is=True ,load_indices=load_indices)
+            bow_matrix = bow_matrix.toarray()
+            lists, all_ends_raw, gt_values, filenames_list, \
+            all_vulnerabilities, all_start_raw, _ = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz', functions_count, save_indices ,load_indices=load_indices)
+            functions_count += current_function_count
+        else:
+            temp_bow_matrix, current_function_count = load_vectors(vector_path[:-4]+str(count)+'.npz', functions_count, save_indices, load=scipy.sparse.load_npz, ret_as_is=True ,load_indices=load_indices)
+            temp_bow_matrix = temp_bow_matrix.toarray()
             temp_lists, temp_ends_raw, temp_gt_values, temp_filenames_list, \
-            temp_all_vulnerabilities, temp_all_start_raw = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz')
+            temp_all_vulnerabilities, temp_all_start_raw, _ = load_vectors(vector_path[:-4]+'_metadata'+str(count)+'.npz', functions_count, save_indices ,load_indices=load_indices)
     
             bow_matrix = np.concatenate([bow_matrix, temp_bow_matrix])
             lists = np.concatenate([lists, temp_lists])
@@ -159,17 +183,37 @@ def load_vectors_iter_folder(e, s, step, vector_path):
             all_vulnerabilities = np.concatenate([all_vulnerabilities, temp_all_vulnerabilities])
             all_start_raw = np.concatenate([all_start_raw, temp_all_start_raw])
             # assert (vocab == temp_vocab).all()
+            functions_count += current_function_count
         count += step
     return bow_matrix, lists, all_ends_raw, gt_values, filenames_list, \
            all_vulnerabilities, all_start_raw, vocab
 
 
-def load_vectors(vector_path, load=np.load, ret_as_is=False):
+def load_vectors(vector_path, functions_count=None, save_indices=None, load=np.load, ret_as_is=False, load_indices=True):
     data = load(vector_path)
     if ret_as_is:
-        return data
+        functions_in_disk = data.shape[0]
+        if save_indices is not None:
+            legal_indices = save_indices-functions_count
+            legal_indices = legal_indices[(legal_indices>=0) & (legal_indices < functions_in_disk)]
+            if load_indices is False:
+                mask = np.ones((data.shape[0], ), dtype=bool)  # np.ones_like(a,dtype=bool)
+                mask[legal_indices] = False
+                legal_indices = legal_indices
+            return data[legal_indices], functions_in_disk
+        else:
+            return data, functions_in_disk
     data = [data[att] for att in data.files]
-    return data
+    functions_in_disk = data[0].shape[0]
+    if save_indices is not None:
+        legal_indices = save_indices - functions_count
+        legal_indices = legal_indices[(legal_indices >= 0) & (legal_indices < functions_in_disk)]
+        if load_indices is False:
+            mask = np.ones((data[0].shape[0],), dtype=bool)  # np.ones_like(a,dtype=bool)
+            mask[legal_indices] = False
+            legal_indices = legal_indices
+        data = [d[legal_indices] for d in data]
+    return (*data, functions_in_disk)
 
 
 def count_to_tfidf(bow_matrix):
