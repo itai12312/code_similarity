@@ -9,7 +9,7 @@ def get_parser():
     parser.add_argument('--metric', action="store", dest="metric", help="jaccard or cosine", default="cosine")
     parser.add_argument('--vectorizer', action="store", dest="vectorizer", help="count or tfidf", default="tfidf")
     parser.add_argument('--clustering_method', action="store", dest="clustering_method", help="single complete average ward weighted centroid median", default="average")
-    parser.add_argument('--matrix_form', action="store", dest="matrix_form", help="0-1 or tf-idf or none", default="none")
+    parser.add_argument('--matrix_form', action="store", dest="matrix_form", help="tfidf for now", default="tdidf")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=None)
     
     parser.add_argument('--files_limit_start', action="store", dest="files_limit_start", type=int, default=0)
