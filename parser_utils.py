@@ -13,8 +13,8 @@ def get_parser():
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=None)
     
     parser.add_argument('--files_limit_start', action="store", dest="files_limit_start", type=int, default=0)
-    parser.add_argument('--files_limit_end', action="store", dest="files_limit_end", type=int, default=4000)
-    parser.add_argument('--files_limit_step', action="store", dest="files_limit_step", type=int, default=116000)
+    parser.add_argument('--files_limit_end', action="store", dest="files_limit_end", type=int, default=116000)
+    parser.add_argument('--files_limit_step', action="store", dest="files_limit_step", type=int, default=4000)
     
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
     parser.add_argument('--profiler', action="store_true", dest="profiler", default=False)  # type=lambda x:x.lower in ['true', '1', 'y']
