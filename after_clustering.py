@@ -67,12 +67,15 @@ def create_cluster_and_types():
     random_vector = create_random_vector(vector_size = VECTOR_SIZE)
     cluster = create_cluster(basic_vector = random_vector, cluster_size = CLUSTER_SIZE) # all vectors in the cluster
     vectors_types = create_types(cluster, percent_yes = PERCENT_TRUE)
+    print(vectors_types)
     return cluster, vectors_types
 
 
 def compare_distances():
     rel = 0
     dist = 0
+    d_yes = 0
+    d_no = 0
     num_plus = 0
     for i in range(TRIALS):
         print(i,"of",TRIALS,"total", i/TRIALS*100,"%")
@@ -84,6 +87,9 @@ def compare_distances():
         cluster_std = find_stdev_of_cluster(cluster)
         distance_yes = find_distance_between_cluster_and_type(cluster, vectors_types, vulnerable = 1)
         distance_no = find_distance_between_cluster_and_type(cluster, vectors_types, vulnerable = 0)
+        d_yes += distance_yes
+        d_no += distance_no
+        #print(d_yes, d_no)
         if (distance_no<distance_yes):
             num_plus+=1
         relation = distance_yes/distance_no
@@ -188,8 +194,11 @@ def run_all_classifiers(X_train, X_test, y_train, y_test):
     neural_network(X_train, X_test, y_train, y_test)
 
 
-compare_distances()
+def main():
+    compare_distances()
+    
+    cluster, vectors_types = create_cluster_and_types()
+    X_train, X_test, y_train, y_test = split_data(cluster, vectors_types)
+    run_all_classifiers(X_train, X_test, y_train, y_test)
 
-cluster, vectors_types = create_cluster_and_types()
-X_train, X_test, y_train, y_test = split_data(cluster, vectors_types)
-run_all_classifiers(X_train, X_test, y_train, y_test)
+#main()

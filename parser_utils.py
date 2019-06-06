@@ -7,15 +7,11 @@ def get_parser():
     parser.add_argument('--output_folder', action="store", dest="output_folder", help="output_folder", default="results")
     parser.add_argument('--classifier', action="store", dest="classifier", help="randomforest for now", default="randomforest")
     parser.add_argument('--metric', action="store", dest="metric", help="jaccard or cosine", default="cosine")
-    parser.add_argument('--vectorizer', action="store", dest="vectorizer", help="count or tfidf", default="tfidf")
+    parser.add_argument('--vectorizer', action="store", dest="vectorizer", help="count or tfidf", default="count")
     parser.add_argument('--clustering_method', action="store", dest="clustering_method", help="single complete average ward weighted centroid median", default="average")
     parser.add_argument('--matrix_form', action="store", dest="matrix_form", help="tfidf for now", default="tdidf")
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=None)
-    
-    parser.add_argument('--files_limit_start', action="store", dest="files_limit_start", type=int, default=0)
-    parser.add_argument('--files_limit_end', action="store", dest="files_limit_end", type=int, default=100)
-    parser.add_argument('--files_limit_step', action="store", dest="files_limit_step", type=int, default=750)
-    
+    parser.add_argument('--files_limit', action="store", dest="files_limit", type=int, default=2000)
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
     parser.add_argument('--profiler', action="store_true", dest="profiler", default=False)  # type=lambda x:x.lower in ['true', '1', 'y']
 
@@ -32,7 +28,6 @@ def get_parser():
     parser.add_argument('--context', action="store", dest="context", type=int, default=10)
     parser.add_argument('--seed', action="store", dest="seed", type=int, default=0)
     parser.add_argument('--no_top_words', action="store", dest="no_top_words", type=int, default=10)
-    parser.add_argument('--select_functions_limit', action="store", dest="select_functions_limit", type=int, default=10000)
     parser.add_argument('--cluster_analysis_count', action="store", dest="cluster_analysis_count", type=int, default=-1)
     # parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
     parser.add_argument('--color_thresh', action="store", dest="color_thresh", type=float, default=0.115)
@@ -40,8 +35,6 @@ def get_parser():
     parser.add_argument('--security_keywords', action="store", dest="security_keywords", nargs='*', default=None)
     # --stages_to_run vectors tfidf distances clustering
     parser.add_argument('--stages_to_run', action="store", dest="stages_to_run", nargs='*', default=['vectors', 'tfidf', 'distances', 'clustering'])
-    parser.add_argument('--gcp_bucket', action="store", dest="gcp_bucket", default=None)
-    parser.add_argument('--shutdown', action="store_true", dest="shutdown", default=False)
     return parser
 
 
