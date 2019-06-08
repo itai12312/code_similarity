@@ -1,6 +1,9 @@
 import numpy as np
 from collections import Counter
 
+from scipy.spatial.distance import cdist
+
+
 from after_clustering import create_cluster_and_types, create_random_vector, VECTOR_SIZE, distance, DISTANCE_TYPE
 
 
@@ -32,51 +35,56 @@ def convert_clusters_to_ndarrays(clusters):
     return clusters_as_ndarrays
 
 
-def expand_clusters_with_knn(clusters, centroids, old_vectors, new_vectors, vectors_index, k = 5):
+def create_centroids(clusters_idxs, tf_idf_full_matrix):
+    centroids = []
+    for cluster_idxs in clusters_idxs:
+        centroid = np.average(tf_idf_full_matrix[cluster_idxs], axis=0)
+        centroids.append(centroid)
+    return centroids
+
+
+def expand_clusters_with_knn(clusters_idxs, use_centroids, tf_idf_full_matrix, new_vectors, vectors_index, k = 5):
     '''
     receives existing clusters, and adds the new vectors to them, according to k closest neighbors
-    :param clusters: list of list of arrays, or list of ndarrays
-    :param new_vectors: list of ndarrays
-    :return: expanded clusters
     '''
     
-    if len(clusters) == 0 or clusters == None:
-        return clusters
+    if len(clusters_idxs) == 0 or clusters_idxs == None:
+        return clusters_idxs
+
+    centroids = create_centroids(clusters_idxs, tf_idf_full_matrix) if use_centroids else None
 
     ndarray = False
-    if isinstance(clusters[0], np.ndarray):
+    if isinstance(clusters_idxs[0], np.ndarray):
         ndarray = True
-        clusters = convert_clusters_to_lists(clusters)
-    clusters = add_vectors_to_clusters(clusters, centroids, k, old_vectors, new_vectors, vectors_index)
+        clusters_idxs = convert_clusters_to_lists(clusters_idxs)
+    clusters_idxs = add_vectors_to_clusters(clusters_idxs, centroids, k, tf_idf_full_matrix, new_vectors, vectors_index)
 
     if ndarray:
-        clusters = convert_clusters_to_ndarrays(clusters)
+        clusters_idxs = convert_clusters_to_ndarrays(clusters_idxs)
 
-    return clusters
+    return clusters_idxs
 
 
-def add_vectors_to_clusters(clusters, centroids, k, old_vectors, new_vectors, vectors_index):
+def add_vectors_to_clusters(clusters_idxs, centroids, k, tf_idf_full_matrix, new_vectors, vectors_index):
     import copy
-    original_clusters = copy.deepcopy(clusters)
+    original_clusters_idxs = copy.deepcopy(clusters_idxs)
     for i, vector in enumerate(new_vectors):
         if (i%10 == 0):
             print(i, len(new_vectors),i/len(new_vectors)*100,"%")
-        add_vector_to_cluster(original_clusters, vector, i, clusters, old_vectors, vectors_index, k)
+        add_vector_to_cluster(original_clusters_idxs, centroids, vector, i, clusters_idxs, tf_idf_full_matrix, vectors_index, k)
         if (i>5000):
             break
-    return clusters
+    return clusters_idxs
 
-def add_vector_to_cluster(original_clusters, new_vector, vector_index, clusters, old_vectors, vectors_index, k):
-    distances = get_distances_dict(original_clusters, old_vectors, new_vector)
+def add_vector_to_cluster(original_clusters, centroids, new_vector, vector_index, clusters_idxs, tf_idf_full_matrix, vectors_index, k):
+    distances = get_distances_dict_faster(original_clusters, tf_idf_full_matrix, new_vector, k)
     chosen_cluster = get_closest_cluster(distances, k)
-    clusters[chosen_cluster].append(vectors_index[vector_index])
+    clusters_idxs[chosen_cluster].append(vectors_index[vector_index])
 
 
 def get_closest_cluster(distances, k, distance_type = DISTANCE_TYPE):
-    if distance_type == 1:
-        reverse = True
-
     top_k = []
+    k = min(k, len(distances.keys()))
     # Extracting top k clusters
     for dist in sorted(distances.keys())[:k]:
         #print(dist)
@@ -86,18 +94,39 @@ def get_closest_cluster(distances, k, distance_type = DISTANCE_TYPE):
     return chosen_cluster
 
 
-def get_distances_dict(clusters, old_vectors, new_vector):
+def get_distances_dict(original_clusters, centroids, tf_idf_full_matrix, new_vector):
     distances = {}
 
     # Calculating distance between the new vector and vectors in clusters
-    for cluster_number, cluster in enumerate(clusters):
-        for vector_number, vector in enumerate(cluster):
-            old_vector = old_vectors[vector]
-            dist = distance(new_vector, old_vector)
+    for cluster_number, cluster in enumerate(original_clusters):
+        if centroids != None and len(centroids) != 0:
+            dist = distance(new_vector, centroids[cluster_number])
+            distances[dist] = {"cluster_number": cluster_number,
+                               "centroid" : centroids[cluster_number]}
+        else:
+            for vector_number, vector in enumerate(cluster):
+                old_vector = tf_idf_full_matrix[vector]
+                dist = distance(new_vector, old_vector)
 
-            distances[dist] = {"cluster_number" : cluster_number,
-                               "vector_number_in_cluster" : vector_number}
+                distances[dist] = {"cluster_number" : cluster_number,
+                                   "vector_number_in_cluster" : vector_number}
+
     return distances
+
+
+def get_distances_dict_faster(original_clusters, tf_idf_full_matrix, new_vector, k):
+    distances = {}
+
+    # Calculating distance between the new vector and vectors in clusters
+    for cluster_number, cluster in enumerate(original_clusters):
+        cluster_vectors = tf_idf_full_matrix[original_clusters[cluster_number]]
+        dists = cdist(new_vector.reshape(1, new_vector.shape[0]), cluster_vectors, 'cosine')
+        sorted_dists = sorted(dists[0])[:k]
+        for dist in sorted_dists:
+            distances[dist] = {"cluster_number": cluster_number}
+
+    return distances
+
 
 def randonm_expand():
     clusters = create_small_clusters()

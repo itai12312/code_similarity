@@ -121,7 +121,7 @@ print("create centroids vector")
 def create_centroid(cluster):
     cluster_size= len(cluster)
     print(cluster)
-    vector_size = cluster[0].length()
+    vector_size = len(cluster[0])
     centroid = np.zeros(vector_size)
     for i in range(cluster_size):
         centroid += cluster[i]
@@ -133,7 +133,8 @@ centroids = list()
 #    centroids.append(create_centroid(clusters[i]))
 centroids = np.asanyarray(centroids)
     
-new_clusters = expand.expand_clusters_with_knn(clusters, centroids, tf_idf_full_matrix, tf_idf_full_matrix[index_list], index_list)
+# new_clusters = expand.expand_clusters_with_knn(clusters, centroids, tf_idf_full_matrix, tf_idf_full_matrix[index_list], index_list)
+new_clusters = expand.expand_clusters_with_knn(clusters, False, tf_idf_full_matrix, tf_idf_full_matrix[index_list], index_list)
 s = 0
 for i in range(len(new_clusters)):
     s += len(new_clusters[i])
@@ -208,7 +209,7 @@ def compare_distances():
     list_yes = list()
     list_no = list()
     for i in range(TRIALS):
-        cluster = create_cluster(new_clusters[i], tf_idf_full_matrix)
+        cluster = tf_idf_full_matrix[new_clusters[i]]
         #centroid = create_centroid(cluster)
         vectors_types = create_types(new_clusters[i], gt)
         print(i,"of",TRIALS,"total", i/TRIALS*100,"%")
