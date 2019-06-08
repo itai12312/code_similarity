@@ -36,7 +36,7 @@ def get_parser():
     parser.add_argument('--cluster_analysis_count', action="store", dest="cluster_analysis_count", type=int, default=-1)
     parser.add_argument('--min_cluster_length', action="store", dest="min_cluster_length", type=int, default=15)
     # parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
-    parser.add_argument('--color_thresh', action="store", dest="color_thresh", type=float, default=0.115)
+    parser.add_argument('--color_thresh', action="store", dest="color_thresh", type=float, default=0.3)
     # pass with spaces between arguments, eg --security_keywords xss sql injection
     parser.add_argument('--security_keywords', action="store", dest="security_keywords", nargs='*', default=None)
     # --stages_to_run vectors tfidf distances clustering
