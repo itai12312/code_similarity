@@ -34,7 +34,7 @@ def analyze_functions2(distances, matrix, lists, raw_lists, params, gt_values, f
     plt.close('all')
     fig = plt.figure(figsize=(150, 70))
     plt.title('clustering method {}, metric {}'.format(params.clustering_method, params.metric))
-    z2 = dendrogram(lnk, labels=[(f'{idx}_{val}' if len(gt_values) < 30 else ('1' if val == 1 else ''))for idx, val in enumerate(gt_values)],
+    z2 = dendrogram(lnk, labels=[(f'{idx}_{val}' if len(gt_values) < 30 else (str(idx) if val == 1 else ''))for idx, val in enumerate(gt_values)],
                    color_threshold=params.color_thresh,
                    orientation='right', leaf_font_size=8, leaf_rotation=0,
                    show_contracted=True, truncate_mode='lastp')  #   #can use p=20 and truncate_mode='level' , link_color_func=get_color)
@@ -43,7 +43,7 @@ def analyze_functions2(distances, matrix, lists, raw_lists, params, gt_values, f
     if not os.path.exists(os.path.join(params.output_folder, 'clusters')):
         os.mkdir(os.path.join(params.output_folder, 'clusters'))
     plt.close('all')
-    z = dendrogram(lnk, labels=[(f'{idx}_{val}' if len(gt_values) < 30 else ('1' if val == 1 else ''))for idx, val in enumerate(gt_values)],
+    z = dendrogram(lnk, labels=[(f'{idx}_{val}' if len(gt_values) < 30 else (str(idx) if val == 1 else ''))for idx, val in enumerate(gt_values)],
                    color_threshold=params.color_thresh,
                    orientation='right', leaf_font_size=8, leaf_rotation=0,
                    )  #   #can use p=20 and truncate_mode='level' , link_color_func=get_color)
@@ -72,10 +72,10 @@ def analyze_functions2(distances, matrix, lists, raw_lists, params, gt_values, f
             fig = plt.figure() # figsize=(70, 70)
             plt.title(f'cluster clustering method {clustering_type}, metric {clustering_metric}')
             z1 = dendrogram(lnk1,  orientation='right', leaf_rotation=0, leaf_font_size=8,
-                            labels=[(f'{idx}_{val}' if len(gt_values) < 30 else ('1' if val == 1 else '')) for idx, val in zip(cluster, gt_values[cluster])],
+                            labels=[(f'{idx}_{val}' if len(gt_values) < 30 else (str(idx) if val == 1 else '')) for idx, val in zip(cluster, gt_values[cluster])],
                             color_threshold=0.10)
             plt.grid(axis='y')
-            plt.savefig(os.path.join(params.output_folder, 'clusters', f'dendogram_{cluster_id}_{clustering_metric}_{clustering_type}.jpg'))
+            plt.savefig(os.path.join(params.output_folder, 'clusters', f'dendogram_{cluster_id}_{clustering_metric}_{clustering_type}.svg'))
             dump_program_to_list_and_get_intersting_clusters(f'cluster_{cluster_id}_list', filenames[cluster],
                                                              gt_values[cluster], lists[cluster], params, raw_lists[cluster],
                                                              all_vulnerabilities[cluster], all_start_raw[cluster], z1, cluster)
