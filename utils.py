@@ -169,10 +169,9 @@ def create_functions_list_from_filename(item):
         if len(possibble) > 0:  # int(begin+1) in set(possibble):
             if keywords is None or isin(keywords, possibble):
                 gt_values.append(1)
-                vulnerabilities.append(','.join(set(possibble)))
             else:
                 gt_values.append(0)
-                vulnerabilities.append('')
+            vulnerabilities.append(','.join(set(possibble)))
             # type_of_vurn = gt.loc[ & ("\\"+realfilename.replace('.tree-viewer.txt', '') == gt['nFile_Name']), 'qName'].values
         else:
             gt_values.append(0)

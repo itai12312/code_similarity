@@ -106,7 +106,6 @@ def predictions(gt_values, matrix):
 
 def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames, gt_values, lists, params, raw_lists, all_vulnerabilities, all_start_raw, z, cluster=None, skip_status=False):
     intersting_clusters = []
-    li = 30
     with open(os.path.join(params.output_folder, 'clusters', output_filename), 'w+') as f:
         f.write(f'order of leaves is {z["leaves"]}\n')
         f.write(f'names of files is {filenames}\n')
@@ -114,7 +113,7 @@ def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames,
         for i in range(len(lists) - 1):
             if i == 0 or z['color_list'][i] != z['color_list'][i - 1]:
                 f.write(f'finished new cluster with len {i - prev}\n')
-                if i - prev > li:
+                if i - prev > params.min_cluster_length:
                     f.write('***\n')
                     intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
                 prev = i
@@ -129,7 +128,7 @@ def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames,
             f.write(begin_message+f' with gt {gt_values[loc]}\n  in filename{filenames[loc]} starts@{all_start_raw[loc]} and vurn: {all_vulnerabilities[loc]}\n')
             f.write(f"{raw_lists[loc]}\n")
         f.write(f'finished new cluster with len {i - prev}\n')
-        if i - prev > li:
+        if i - prev > params.min_cluster_length:
             intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
             f.write('***\n')
     return intersting_clusters
