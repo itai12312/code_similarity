@@ -128,11 +128,12 @@ def dump_program_to_list_and_get_intersting_clusters(output_filename, filenames,
                 begin_message = f'program # {prog_id}, location in cluser {i}'
             loc = prog_id  #  if indices is None else indices.tolist().index(prog_id)
             f.write(begin_message+f' with gt {gt_values[loc]}\n  in filename{filenames[loc]} starts@{all_start_raw[loc]} and vurn: {all_vulnerabilities[loc]}\n')
-            if os.path.exists(filenames[loc].replace(".tree-viewer.txt", "")):
-                with open(filenames[loc].replace(".tree-viewer.txt", "")) as f11:
-                    data = f11.read().splitlines()
-                    data = data[all_start_raw[loc]:all_ends_raw[loc]]
-                    f.write(f"{data}\n")
+            # if os.path.exists(filenames[loc].replace(".tree-viewer.txt", "")):
+            with open(filenames[loc].replace("tokenized1","c_sharp_code").replace(".tree-viewer.txt", "")) as f11:
+                data = f11.read().splitlines()
+                data = data[int(float(all_start_raw[loc])):int(float(all_ends_raw[loc]))]
+                data = '\n'.join(data)
+                f.write(f"{data}\n")
         f.write(f'finished new cluster with len {i - prev}\n')
         if i - prev > params.min_cluster_length:
             intersting_clusters.append(np.array([z["leaves"][j] for j in range(prev, i)]))
