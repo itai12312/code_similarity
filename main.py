@@ -258,7 +258,7 @@ def get_vocab(select_top_tokens, path):
 
 
 def get_all_needed_inputs_params(params, list_of_tokens):
-    return generate_vectors(params, params.output_folder, params.cores_to_use, params.input_folder, params.vectorizer,
+    return generate_vectors(params, join(params.output_folder, 'vectors'), params.cores_to_use, params.input_folder, params.vectorizer,
                             params.max_features, params.ngram_range,
                             params.security_keywords, params.min_token_count, list_of_tokens)
 

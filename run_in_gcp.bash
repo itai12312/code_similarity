@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# sshfs -o IdentityFile=/home/itai/.ssh/google_compute_engine,allow_other zeitak_itai_gmail_com@35.189.248.82:/home/zeitak_itai_gmail_com/ /home/itai/projects/gcpmounted/
-# sshfs -o IdentityFile=/home/itai/.ssh/google_compute_engine,allow_other,sshfs_debug,debug,LOGLEVEL=DEBUG zeitak_itai_gmail_com@104.154.162.236:/home/zeitak_itai_gmail_com/projects/python/sl_dl/ /home/itai/projects/gcpmounted/
+# sshfs -o IdentityFile=/home/itai/.ssh/google_compute_engine,allow_other zeitak_itai_gmail_com@nogpu:/home/zeitak_itai_gmail_com/projects/code/ /home/itai/projects/gcpmounted/
+# sshfs -o IdentityFile=/home/itai/.ssh/google_compute_engine,allow_other,sshfs_debug,debug,LOGLEVEL=DEBUG zeitak_itai_gmail_com@nogpu:/home/zeitak_itai_gmail_com/projects/code/ /home/itai/projects/gcpmounted/
 # nohup python3.6 lab2.py --plan ex5 --uploadtogcp > logfile.txt 2>&1 &
 # gsutil -m cp gs://bucketname/ locallocation
 # gsutil -m cp results/* gs://jupyter-data-for-sf/results/
