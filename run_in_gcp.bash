@@ -19,6 +19,7 @@
 # python3.6 main.py --gcp_bucket jupyter-data-for-sf --stages_to_run vectors tfidf --cores_to_use -1 --security_keywords sql xss xsrf xxe dos overflow injection cryptographically --matrix_form tfidf --vectorizer count --metric euclidean --input_folder ../codes/ --files_limit_end 1000 --output_folder results1 --files_limit_step 300
 # nohup bash ./run_in_gcp.bash &
 python3.6 main.py --shutdown --gcp_bucket jupyter-data-for-sf --stages_to_run vectors tfidf distances clustering --cores_to_use -1 --input_folder ../codes/ --output_folder results_8_6_19 > logfile.txt 2>&1
+# python3.6 main.py --gcp_bucket jupyter-data-for-sf --stages_to_run clustering --cores_to_use -1 --input_folder ../codes/ --output_folder results_8_6_19 > logfile.txt 2>&1
 sudo shutdown
 # ls -la results
 # df -h

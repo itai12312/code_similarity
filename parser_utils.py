@@ -13,7 +13,7 @@ def get_parser():
     parser.add_argument('--max_features', action="store", dest="max_features", type=int, default=None)
     
     parser.add_argument('--files_limit_start', action="store", dest="files_limit_start", type=int, default=0)
-    parser.add_argument('--files_limit_end', action="store", dest="files_limit_end", type=int, default=116000)
+    parser.add_argument('--files_limit_end', action="store", dest="files_limit_end", type=int, default=111000)
     parser.add_argument('--files_limit_step', action="store", dest="files_limit_step", type=int, default=4000)
     
     parser.add_argument('--override', action="store", dest="override", default=True, type=lambda x:x.lower not in ['false', '0', 'n'])
@@ -36,7 +36,7 @@ def get_parser():
     parser.add_argument('--cluster_analysis_count', action="store", dest="cluster_analysis_count", type=int, default=-1)
     parser.add_argument('--min_cluster_length', action="store", dest="min_cluster_length", type=int, default=15)
     # parser.add_argument('--downsampling', action="store", dest="downsampling", type=int, default=1e-3)
-    parser.add_argument('--color_thresh', action="store", dest="color_thresh", type=float, default=0.3)
+    parser.add_argument('--color_thresh', action="store", dest="color_thresh", type=float, default=0.4)
     # pass with spaces between arguments, eg --security_keywords xss sql injection
     parser.add_argument('--security_keywords', action="store", dest="security_keywords", nargs='*', default=None)
     # --stages_to_run vectors tfidf distances clustering
