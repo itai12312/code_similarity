@@ -159,7 +159,8 @@ def create_types(index_cluster, gt):
     cluster_size= len(index_cluster)
     vector = np.zeros(cluster_size)
     for i in range(cluster_size):
-        vector[i] = gt[index_cluster[i]]
+        if index_cluster[i] < len(gt):
+            vector[i] = gt[index_cluster[i]]
     return vector
 
 def find_distance_between_cluster_and_type(cluster, vector_types, vulnerable):
