@@ -256,8 +256,7 @@ def profile(params):
     pr.disable()
     pr.print_stats(sort='cumtime')  # cumtime, ncalls
 
-
-#--matrix_form tfidf --vectorizer count --metric euclidean --input_folder ../codes_short/ --files_limit 100 --output_folder result_fixed_vocab
+# --matrix_form tfidf --vectorizer count --metric cosine --input_folder ../codes/ --output_folder results2 --stages_to_run clustering
 if __name__ == "__main__":
     main()
 
