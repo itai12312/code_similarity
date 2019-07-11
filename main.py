@@ -79,7 +79,8 @@ def main_(params):
     true_cores = params.cores_to_use
     params.cores_to_use = 1
     s = params.files_limit_start
-    e = min([params.files_limit_end,111000])
+    e = min([params.files_limit_end,111000,len(os.listdir(os.path.join(params.input_folder, 'tokenized1')))])
+    params.select_functions_limit = min(params.select_functions_limit, e)
     q = Queue()
 
 
@@ -165,7 +166,7 @@ def load_vectors_iter_folder(end, start, step, vector_path, main_folder, keyword
     save_indices = np.load(indices_path)
     count = start
     functions_count = 0
-    vocab, _ = load_vectors(join(main_folder, 'vectors_vocab.npz'))
+    vocab, _ = load_vectors(join(main_folder, 'vectors','vectors_vocab.npz'))
     if keywords is not None:
         def gt(item):
             ret = is_in(keywords, item)
@@ -271,7 +272,8 @@ def profile(params):
     pr.disable()
     pr.print_stats(sort='cumtime')  # cumtime, ncalls
 
-# --matrix_form tfidf --vectorizer count --metric cosine --input_folder ../codes/ --output_folder results2 --stages_to_run clustering
+# --matrix_form tfidf --vectorizer count --metric cosine --input_folder ../codes_short/ --output_folder results_small --stages_to_run vectors tfidf distances clustering --min_cluster_length 5
+# --matrix_form tfidf --vectorizer count --metric cosine --input_folder ../codes/ --output_folder resuls_large --stages_to_run clustering
 if __name__ == "__main__":
     main()
 
